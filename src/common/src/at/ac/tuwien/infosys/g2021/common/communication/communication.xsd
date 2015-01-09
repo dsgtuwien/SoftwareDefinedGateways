@@ -1,0 +1,243 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+This is the definition of the messages sent between the buffer daemon and the
+client JVMs containing DataPoint instances.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://infosys.tu-wien.ac.at/g2021/schemas/communication"
+           xmlns="http://infosys.tu-wien.ac.at/g2021/schemas/communication"
+           elementFormDefault="qualified">
+
+    <!-- There are only messages at the outermost level. -->
+    <xs:element name="message">
+        <xs:complexType>
+            <xs:choice>
+                <!--
+                A client request to establish a new client endpoint.
+                This message ist used in the communication management as "Basic-setup-connect".
+                -->
+                <xs:element name="establish" type="EstablishTag"/>
+
+                <!--
+                The server response to accept a client message. This message is the answer
+                to an establish message from a client, if the client connection uses the same
+                protocol version as defined in the communication management as "Basic-setup-accept".
+                -->
+                <xs:element name="accepted" type="AcceptedTag"/>
+
+                <!--
+                The server response to reject a client message. This message is used in several cases:
+                o In the communication management this message ist used as "Basic-setup-reject", if
+                  GBot and daemon use different protocol versions.
+                o As response to querying buffer meta info, if there is no buffer with the given name.
+                o As response to assigning an unknown buffer to a data point.
+                o After setting the value of an unknown buffer.
+                -->
+                <xs:element name="rejected" type="RejectedTag"/>
+
+                <!--
+                The request to remove a connection between client endpoint and server. The TCP/IP connection
+                is closed after sending this message.
+                -->
+                <xs:element name="disconnect" type="DisconnectTag"/>
+
+                <!--
+                The request from a client, to query buffer names. This message is used in
+                the process communication query as "Buffer-query" message.
+                -->
+                <xs:element name="queryBuffers" type="QueryBuffersTag"/>
+
+                <!--
+                A list of buffer names. This message is used in
+                the process communication query as "Buffer-names" message.
+                -->
+                <xs:element name="bufferNames" type="BufferNamesTag"/>
+
+                <!--
+                The request from a client, to query the meta info of a single buffer. This message is used in
+                the process communication query as "Buffer-read" message.
+                -->
+                <xs:element name="queryMetaInfo" type="QueryMetaInfoTag"/>
+
+                <!--
+                The meta info assigned to a buffer. This message is used in
+                the process communication query as "Buffer-meta-info" message.
+                -->
+                <xs:element name="bufferMetaInfo" type="BufferMetaInfoTag"/>
+
+                <!--
+                A client request to get the current state and value of a buffer immediately.
+                This message is used in the process communication values as "Value-get-now" message.
+                -->
+                <xs:element name="getImmediate" type="GetImmediateTag"/>
+
+                <!--
+                A client request to get the current state and value of a buffer after a value change.
+                This message is used in the process communication values as "Value-get-onChange" message.
+                -->
+                <xs:element name="get" type="GetTag"/>
+
+                <!--
+                A client request to set the current value of a buffer.
+                -->
+                <xs:element name="set" type="SetTag"/>
+
+                <!--
+                The daemon sends the current information about a buffer to the client.
+                This message is used in the process communication values as "Value-push" message.
+                -->
+                <xs:element name="push" type="PushTag"/>
+
+            </xs:choice>
+        </xs:complexType>
+    </xs:element>
+
+    <!--
+    The definition of the establish tag.
+    -->
+    <xs:complexType name="EstablishTag">
+
+        <!-- The currently used protocol version. -->
+        <xs:attribute name="version" type="xs:int" use="required"/>
+
+    </xs:complexType>
+
+    <!--
+    The definition of the accepted tag. This tag does not contain any additional data.
+    -->
+    <xs:complexType name="AcceptedTag"/>
+
+    <!--
+    The definition of the rejected tag.
+    -->
+    <xs:complexType name="RejectedTag">
+
+        <!-- This is a hint, why a message is rejected by the daemon. -->
+        <xs:attribute name="reason" type="xs:string" use="required"/>
+    </xs:complexType>
+
+    <!--
+    The definition of the disconnect tag. This tag does not contain any additional data.
+    -->
+    <xs:complexType name="DisconnectTag"/>
+
+    <!--
+    The definition of the queryBuffers tag. This tag contains the regular expressions for buffer names and buffer
+    metadata as attributes.
+    -->
+    <xs:complexType name="QueryBuffersTag">
+
+        <!-- The name pattern of the required buffers. -->
+        <xs:attribute name="name" type="xs:string" use="required"/>
+
+        <!-- The meta info pattern of the required buffers. -->
+        <xs:attribute name="metaInfo" type="xs:string" use="required"/>
+
+    </xs:complexType>
+
+    <!--
+    A list of buffer names as a response of a buffer query. The list may be empty.
+    -->
+    <xs:complexType name="BufferNamesTag">
+        <xs:sequence>
+            <xs:element name="name" type="xs:string" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!--
+    The definition of the queryMetaInfo tag. This tag contains the name of the buffer, for which the meta info is required.
+    -->
+    <xs:complexType name="QueryMetaInfoTag">
+
+        <!-- The name of the buffer. -->
+        <xs:attribute name="name" type="xs:string" use="required"/>
+
+    </xs:complexType>
+
+    <!--
+    The definition of the bufferMetaInfo tag. This tag contains the name of a buffer and the meta info assigned to.
+    -->
+    <xs:complexType name="BufferMetaInfoTag">
+        <xs:sequence>
+
+            <!-- The buffer name -->
+            <xs:element name="name" type="xs:string"/>
+
+            <!-- The buffer meta info. This list may be empty! -->
+            <xs:element name="metaInfo" type="MetaInfoTag" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!--
+    The definition of a single entry of buffer meta information.
+    -->
+    <xs:complexType name="MetaInfoTag">
+
+        <!-- The buffer meta info. -->
+        <xs:sequence>
+            <xs:element name="info" type="xs:string"/>
+        </xs:sequence>
+
+        <!-- The meta info name -->
+        <xs:attribute name="name" type="xs:string"/>
+    </xs:complexType>
+
+    <!--
+    The definition of the getImmediate tag. This tag contains the name of the buffer only.
+    -->
+    <xs:complexType name="GetImmediateTag">
+
+        <!-- The name of the buffer. -->
+        <xs:attribute name="name" type="xs:string" use="required"/>
+
+    </xs:complexType>
+
+    <!--
+    The definition of the get tag. This tag contains the name of the buffer only.
+    -->
+    <xs:complexType name="GetTag">
+
+        <!-- The name of the buffer. -->
+        <xs:attribute name="name" type="xs:string" use="required"/>
+
+    </xs:complexType>
+
+    <!--
+    The definition of the set tag. This tag contains the name of the buffer and its new value.
+    -->
+    <xs:complexType name="SetTag">
+
+        <!-- The name of the buffer. -->
+        <xs:attribute name="name" type="xs:string" use="required"/>
+
+        <!-- The value of the buffer. -->
+        <xs:attribute name="value" type="xs:double" use="required"/>
+
+    </xs:complexType>
+
+    <!--
+    The definition of the push tag. This tag contains the name of the buffer, its current value and its state.
+    The buffer value is omitted, if the buffer isn't in a ready state.
+    -->
+    <xs:complexType name="PushTag">
+
+        <!-- The name of the buffer. -->
+        <xs:attribute name="name" type="xs:string" use="required"/>
+
+        <!-- The value of the buffer. -->
+        <xs:attribute name="value" type="xs:double" use="optional"/>
+
+        <!-- The current buffer state. -->
+        <xs:attribute name="state" type="xs:string" use="required"/>
+
+        <!-- The time stamp of the last buffer value change. -->
+        <xs:attribute name="timestamp" type="xs:dateTime" use="required"/>
+
+        <!-- Is this message the result of an spontaneous value change. -->
+        <xs:attribute name="spontaneous" type="xs:boolean" use="required"/>
+
+    </xs:complexType>
+
+</xs:schema>
+

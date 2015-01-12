@@ -2,7 +2,7 @@
 // Diese Datei wurde mit der JavaTM Architecture for XML Binding(JAXB) Reference Implementation, v2.2.8-b130911.1802 generiert 
 // Siehe <a href="http://java.sun.com/xml/jaxb">http://java.sun.com/xml/jaxb</a> 
 // �nderungen an dieser Datei gehen bei einer Neukompilierung des Quellschemas verloren. 
-// Generiert: 2015.01.04 um 02:07:43 PM CET 
+// Generiert: 2015.01.09 um 07:33:28 PM CET 
 //
 
 
@@ -28,10 +28,15 @@ import javax.xml.bind.annotation.XmlType;
  *         &lt;element name="accepted" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}AcceptedTag"/>
  *         &lt;element name="rejected" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}RejectedTag"/>
  *         &lt;element name="disconnect" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}DisconnectTag"/>
- *         &lt;element name="queryBuffers" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}QueryBuffersTag"/>
+ *         &lt;element name="queryBuffersByName" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}QueryBuffersByNameTag"/>
+ *         &lt;element name="queryBuffersByMetainfo" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}QueryBuffersByMetainfoTag"/>
  *         &lt;element name="bufferNames" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}BufferNamesTag"/>
- *         &lt;element name="queryMetaInfo" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}QueryMetaInfoTag"/>
- *         &lt;element name="bufferMetaInfo" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}BufferMetaInfoTag"/>
+ *         &lt;element name="queryMetainfo" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}QueryMetainfoTag"/>
+ *         &lt;element name="bufferMetainfo" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}BufferMetainfoTag"/>
+ *         &lt;element name="getBufferConfiguration" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}GetBufferConfigurationTag"/>
+ *         &lt;element name="setBufferConfiguration" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}SetBufferConfigurationTag"/>
+ *         &lt;element name="releaseBuffer" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}ReleaseBufferTag"/>
+ *         &lt;element name="bufferConfiguration" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}BufferConfigurationTag"/>
  *         &lt;element name="getImmediate" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}GetImmediateTag"/>
  *         &lt;element name="get" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}GetTag"/>
  *         &lt;element name="set" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}SetTag"/>
@@ -50,10 +55,15 @@ import javax.xml.bind.annotation.XmlType;
         "accepted",
         "rejected",
         "disconnect",
-        "queryBuffers",
+        "queryBuffersByName",
+        "queryBuffersByMetainfo",
         "bufferNames",
-        "queryMetaInfo",
-        "bufferMetaInfo",
+        "queryMetainfo",
+        "bufferMetainfo",
+        "getBufferConfiguration",
+        "setBufferConfiguration",
+        "releaseBuffer",
+        "bufferConfiguration",
         "getImmediate",
         "get",
         "set",
@@ -66,10 +76,15 @@ public class Message {
     protected AcceptedTag accepted;
     protected RejectedTag rejected;
     protected DisconnectTag disconnect;
-    protected QueryBuffersTag queryBuffers;
+    protected QueryBuffersByNameTag queryBuffersByName;
+    protected QueryBuffersByMetainfoTag queryBuffersByMetainfo;
     protected BufferNamesTag bufferNames;
-    protected QueryMetaInfoTag queryMetaInfo;
-    protected BufferMetaInfoTag bufferMetaInfo;
+    protected QueryMetainfoTag queryMetainfo;
+    protected BufferMetainfoTag bufferMetainfo;
+    protected GetBufferConfigurationTag getBufferConfiguration;
+    protected SetBufferConfigurationTag setBufferConfiguration;
+    protected ReleaseBufferTag releaseBuffer;
+    protected BufferConfigurationTag bufferConfiguration;
     protected GetImmediateTag getImmediate;
     protected GetTag get;
     protected SetTag set;
@@ -172,27 +187,51 @@ public class Message {
     }
 
     /**
-     * Ruft den Wert der queryBuffers-Eigenschaft ab.
+     * Ruft den Wert der queryBuffersByName-Eigenschaft ab.
      * 
      * @return
      *     possible object is
-     *     {@link QueryBuffersTag }
+     *     {@link QueryBuffersByNameTag }
      *     
      */
-    public QueryBuffersTag getQueryBuffers() {
-        return queryBuffers;
+    public QueryBuffersByNameTag getQueryBuffersByName() {
+        return queryBuffersByName;
     }
 
     /**
-     * Legt den Wert der queryBuffers-Eigenschaft fest.
+     * Legt den Wert der queryBuffersByName-Eigenschaft fest.
      * 
      * @param value
      *     allowed object is
-     *     {@link QueryBuffersTag }
+     *     {@link QueryBuffersByNameTag }
      *     
      */
-    public void setQueryBuffers(QueryBuffersTag value) {
-        this.queryBuffers = value;
+    public void setQueryBuffersByName(QueryBuffersByNameTag value) {
+        this.queryBuffersByName = value;
+    }
+
+    /**
+     * Ruft den Wert der queryBuffersByMetainfo-Eigenschaft ab.
+     * 
+     * @return
+     *     possible object is
+     *     {@link QueryBuffersByMetainfoTag }
+     *     
+     */
+    public QueryBuffersByMetainfoTag getQueryBuffersByMetainfo() {
+        return queryBuffersByMetainfo;
+    }
+
+    /**
+     * Legt den Wert der queryBuffersByMetainfo-Eigenschaft fest.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link QueryBuffersByMetainfoTag }
+     *     
+     */
+    public void setQueryBuffersByMetainfo(QueryBuffersByMetainfoTag value) {
+        this.queryBuffersByMetainfo = value;
     }
 
     /**
@@ -220,51 +259,147 @@ public class Message {
     }
 
     /**
-     * Ruft den Wert der queryMetaInfo-Eigenschaft ab.
+     * Ruft den Wert der queryMetainfo-Eigenschaft ab.
      * 
      * @return
      *     possible object is
-     *     {@link QueryMetaInfoTag }
+     *     {@link QueryMetainfoTag }
      *     
      */
-    public QueryMetaInfoTag getQueryMetaInfo() {
-        return queryMetaInfo;
+    public QueryMetainfoTag getQueryMetainfo() {
+        return queryMetainfo;
     }
 
     /**
-     * Legt den Wert der queryMetaInfo-Eigenschaft fest.
+     * Legt den Wert der queryMetainfo-Eigenschaft fest.
      * 
      * @param value
      *     allowed object is
-     *     {@link QueryMetaInfoTag }
+     *     {@link QueryMetainfoTag }
      *     
      */
-    public void setQueryMetaInfo(QueryMetaInfoTag value) {
-        this.queryMetaInfo = value;
+    public void setQueryMetainfo(QueryMetainfoTag value) {
+        this.queryMetainfo = value;
     }
 
     /**
-     * Ruft den Wert der bufferMetaInfo-Eigenschaft ab.
+     * Ruft den Wert der bufferMetainfo-Eigenschaft ab.
      * 
      * @return
      *     possible object is
-     *     {@link BufferMetaInfoTag }
+     *     {@link BufferMetainfoTag }
      *     
      */
-    public BufferMetaInfoTag getBufferMetaInfo() {
-        return bufferMetaInfo;
+    public BufferMetainfoTag getBufferMetainfo() {
+        return bufferMetainfo;
     }
 
     /**
-     * Legt den Wert der bufferMetaInfo-Eigenschaft fest.
+     * Legt den Wert der bufferMetainfo-Eigenschaft fest.
      * 
      * @param value
      *     allowed object is
-     *     {@link BufferMetaInfoTag }
+     *     {@link BufferMetainfoTag }
      *     
      */
-    public void setBufferMetaInfo(BufferMetaInfoTag value) {
-        this.bufferMetaInfo = value;
+    public void setBufferMetainfo(BufferMetainfoTag value) {
+        this.bufferMetainfo = value;
+    }
+
+    /**
+     * Ruft den Wert der getBufferConfiguration-Eigenschaft ab.
+     * 
+     * @return
+     *     possible object is
+     *     {@link GetBufferConfigurationTag }
+     *     
+     */
+    public GetBufferConfigurationTag getGetBufferConfiguration() {
+        return getBufferConfiguration;
+    }
+
+    /**
+     * Legt den Wert der getBufferConfiguration-Eigenschaft fest.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link GetBufferConfigurationTag }
+     *     
+     */
+    public void setGetBufferConfiguration(GetBufferConfigurationTag value) {
+        this.getBufferConfiguration = value;
+    }
+
+    /**
+     * Ruft den Wert der setBufferConfiguration-Eigenschaft ab.
+     * 
+     * @return
+     *     possible object is
+     *     {@link SetBufferConfigurationTag }
+     *     
+     */
+    public SetBufferConfigurationTag getSetBufferConfiguration() {
+        return setBufferConfiguration;
+    }
+
+    /**
+     * Legt den Wert der setBufferConfiguration-Eigenschaft fest.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link SetBufferConfigurationTag }
+     *     
+     */
+    public void setSetBufferConfiguration(SetBufferConfigurationTag value) {
+        this.setBufferConfiguration = value;
+    }
+
+    /**
+     * Ruft den Wert der releaseBuffer-Eigenschaft ab.
+     * 
+     * @return
+     *     possible object is
+     *     {@link ReleaseBufferTag }
+     *     
+     */
+    public ReleaseBufferTag getReleaseBuffer() {
+        return releaseBuffer;
+    }
+
+    /**
+     * Legt den Wert der releaseBuffer-Eigenschaft fest.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link ReleaseBufferTag }
+     *     
+     */
+    public void setReleaseBuffer(ReleaseBufferTag value) {
+        this.releaseBuffer = value;
+    }
+
+    /**
+     * Ruft den Wert der bufferConfiguration-Eigenschaft ab.
+     * 
+     * @return
+     *     possible object is
+     *     {@link BufferConfigurationTag }
+     *     
+     */
+    public BufferConfigurationTag getBufferConfiguration() {
+        return bufferConfiguration;
+    }
+
+    /**
+     * Legt den Wert der bufferConfiguration-Eigenschaft fest.
+     * 
+     * @param value
+     *     allowed object is
+     *     {@link BufferConfigurationTag }
+     *     
+     */
+    public void setBufferConfiguration(BufferConfigurationTag value) {
+        this.bufferConfiguration = value;
     }
 
     /**

@@ -1,21 +1,40 @@
 package at.ac.tuwien.infosys.g2021.common.communication;
 
+import at.ac.tuwien.infosys.g2021.common.AdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
+import at.ac.tuwien.infosys.g2021.common.FilteringAdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.GathererConfiguration;
+import at.ac.tuwien.infosys.g2021.common.LowpassAdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.ScalingAdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.TriggeringAdapterConfiguration;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.AcceptedTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferMetaInfoTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.AdapterTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferConfigurationTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferMetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferNamesTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.DisconnectTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.EstablishTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.FilteringAdapterTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GathererTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetBufferConfigurationTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetImmediateTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.LowpassAdapterTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.Message;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.MetaInfoTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.MetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ObjectFactory;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.PushTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryMetaInfoTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersByMetainfoTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersByNameTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryMetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.RejectedTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ReleaseBufferTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ScalingAdapterTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.SetBufferConfigurationTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.SetTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.TriggeringAdapterTag;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
+import at.ac.tuwien.infosys.g2021.common.util.NotYetImplementedError;
 import at.ac.tuwien.infosys.g2021.common.util.PanicError;
 import java.io.IOException;
 import java.util.Date;
@@ -179,25 +198,45 @@ class MessageSender {
     }
 
     /**
-     * Sends a "queryBuffers" message to the communication partner.
+     * Sends a "queryBuffersByName" message to the communication partner.
      *
-     * @param namePattern     a regular expression for the buffer name
-     * @param metaInfoPattern a regular expression for the buffer meta info
+     * @param name a regular expression for the buffer name
      *
      * @throws IOException if the send operation fails
      */
-    void queryBuffers(String namePattern, String metaInfoPattern) throws IOException {
+    void queryBuffersByName(String name) throws IOException {
 
         checkConnection();
 
         Message message = objectFactory.createMessage();
-        QueryBuffersTag queryBuffersTag = objectFactory.createQueryBuffersTag();
+        QueryBuffersByNameTag queryBuffersTag = objectFactory.createQueryBuffersByNameTag();
 
-        queryBuffersTag.setName(namePattern);
-        queryBuffersTag.setMetaInfo(metaInfoPattern);
-        message.setQueryBuffers(queryBuffersTag);
+        queryBuffersTag.setName(name);
+        message.setQueryBuffersByName(queryBuffersTag);
 
-        sendMessage(String.format("queryBuffers(%s, %s)", namePattern, metaInfoPattern), message);
+        sendMessage(String.format("queryBuffersByName(%s)", name), message);
+    }
+
+    /**
+     * Sends a "queryBuffersByMetainfo" message to the communication partner.
+     *
+     * @param topic   a regular expression specifying the buffer topics
+     * @param metainfoPattern a regular expression for the buffer meta info
+     *
+     * @throws IOException if the send operation fails
+     */
+    void queryBuffersByMetainfo(String topic, String metainfoPattern) throws IOException {
+
+        checkConnection();
+
+        Message message = objectFactory.createMessage();
+        QueryBuffersByMetainfoTag queryBuffersTag = objectFactory.createQueryBuffersByMetainfoTag();
+
+        queryBuffersTag.setTopic(topic);
+        queryBuffersTag.setMetainfo(metainfoPattern);
+        message.setQueryBuffersByMetainfo(queryBuffersTag);
+
+        sendMessage(String.format("queryBuffersByMetainfo(%s, %s)", topic, metainfoPattern), message);
     }
 
     /**
@@ -227,47 +266,241 @@ class MessageSender {
      *
      * @throws IOException if the send operation fails
      */
-    void queryMetaInfo(String bufferName) throws IOException {
+    void queryMetainfo(String bufferName) throws IOException {
 
         checkConnection();
 
         Message message = objectFactory.createMessage();
-        QueryMetaInfoTag queryMetaInfoTag = objectFactory.createQueryMetaInfoTag();
+        QueryMetainfoTag queryMetainfoTag = objectFactory.createQueryMetainfoTag();
 
-        queryMetaInfoTag.setName(bufferName);
-        message.setQueryMetaInfo(queryMetaInfoTag);
+        queryMetainfoTag.setName(bufferName);
+        message.setQueryMetainfo(queryMetainfoTag);
 
-        sendMessage(String.format("queryMetaInfo(%s)", bufferName), message);
+        sendMessage(String.format("queryMetainfo(%s)", bufferName), message);
     }
 
     /**
      * Sends a "bufferMetaInfo" message to the communication partner.
      *
      * @param bufferName the name of the buffer
-     * @param metaInfo   the assigned meta info
+     * @param metainfo   the assigned meta info
      *
      * @throws IOException if the send operation fails
      */
-    void bufferMetaInfo(String bufferName, Map<String, String> metaInfo) throws IOException {
+    void bufferMetainfo(String bufferName, Map<String, String> metainfo) throws IOException {
 
         checkConnection();
 
         Message message = objectFactory.createMessage();
-        BufferMetaInfoTag bufferMetaInfoTag = objectFactory.createBufferMetaInfoTag();
+        BufferMetainfoTag bufferMetainfoTag = objectFactory.createBufferMetainfoTag();
 
-        bufferMetaInfoTag.setName(bufferName);
-        for (Map.Entry<String, String> entry : metaInfo.entrySet()) {
+        bufferMetainfoTag.setName(bufferName);
+        metainfoToXML(metainfo, bufferMetainfoTag.getMetainfo());
 
-            MetaInfoTag metaInfoTag = objectFactory.createMetaInfoTag();
+        message.setBufferMetainfo(bufferMetainfoTag);
 
-            metaInfoTag.setName(entry.getKey());
-            metaInfoTag.setInfo(entry.getValue());
+        sendMessage(String.format("bufferMetainfo(%s, %d entries)", bufferName, metainfo.size()), message);
+    }
 
-            bufferMetaInfoTag.getMetaInfo().add(metaInfoTag);
+    /**
+     * Fills all the meta information of a buffer into a list of MetaInfo-Tags.
+     *
+     * @param metainfo the buffer meta information
+     * @param tagList  the list of XML-tags
+     */
+    private void metainfoToXML(Map<String, String> metainfo, List<MetainfoTag> tagList) {
+
+        for (Map.Entry<String, String> entry : metainfo.entrySet()) {
+
+            MetainfoTag metainfoTag = objectFactory.createMetainfoTag();
+
+            metainfoTag.setName(entry.getKey());
+            metainfoTag.setInfo(entry.getValue());
+
+            tagList.add(metainfoTag);
         }
-        message.setBufferMetaInfo(bufferMetaInfoTag);
+    }
 
-        sendMessage(String.format("bufferMetaInfo(%s, %d entries)", bufferName, metaInfo.size()), message);
+    /**
+     * Sends a "bufferConfiguration" message to the communication partner.
+     *
+     * @param configuration the buffer configuration
+     *
+     * @throws IOException if the send operation fails
+     */
+    private BufferConfigurationTag configurationToXML(BufferConfiguration configuration) throws IOException {
+
+        BufferConfigurationTag result = objectFactory.createBufferConfigurationTag();
+
+        result.setKind(configuration.getBufferClass().name());
+
+        // Converting the info about the gatherer.
+        GathererTag gathererTag = objectFactory.createGathererTag();
+        GathererConfiguration gathererConfiguration = configuration.getGatherer();
+
+        switch (gathererConfiguration.kindOfGatherer()) {
+            case DUMMY:
+                gathererTag.setDummy(objectFactory.createDummyGathererTag());
+                break;
+
+            case TEST:
+                gathererTag.setTest(objectFactory.createTestGathererTag());
+                break;
+
+            default:
+                throw new NotYetImplementedError("unknown gatherer class: " + gathererConfiguration.kindOfGatherer());
+        }
+        result.setGatherer(gathererTag);
+
+        // Converting the info about the adapter chain.
+        for (AdapterConfiguration adapter : configuration.getAdapterChain()) {
+
+            AdapterTag adapterTag = objectFactory.createAdapterTag();
+
+            switch (adapter.kindOfAdapter()) {
+                case DUMMY:
+                    adapterTag.setDummy(objectFactory.createDummyAdapterTag());
+                    break;
+
+                case SCALE:
+                    ScalingAdapterConfiguration scalingAdapterConfiguration = (ScalingAdapterConfiguration)adapter;
+                    ScalingAdapterTag scalingAdapterTag = objectFactory.createScalingAdapterTag();
+
+                    scalingAdapterTag.setA(scalingAdapterConfiguration.getA());
+                    scalingAdapterTag.setB(scalingAdapterConfiguration.getB());
+                    scalingAdapterTag.setC(scalingAdapterConfiguration.getC());
+
+                    adapterTag.setScale(scalingAdapterTag);
+                    break;
+
+                case TRIGGER:
+                    TriggeringAdapterConfiguration triggeringAdapterConfiguration = (TriggeringAdapterConfiguration)adapter;
+                    TriggeringAdapterTag triggeringAdapterTag = objectFactory.createTriggeringAdapterTag();
+
+                    triggeringAdapterTag.setLowerThreshold(triggeringAdapterConfiguration.getLowerThreshold());
+                    triggeringAdapterTag.setUpperThreshold(triggeringAdapterConfiguration.getUpperThreshold());
+                    triggeringAdapterTag.setLowerValue(triggeringAdapterConfiguration.getLowerOutput());
+                    triggeringAdapterTag.setUpperValue(triggeringAdapterConfiguration.getUpperOutput());
+
+                    adapterTag.setTrigger(triggeringAdapterTag);
+                    break;
+
+                case LOWPASS:
+                    LowpassAdapterConfiguration lowpassAdapterConfiguration = (LowpassAdapterConfiguration)adapter;
+                    LowpassAdapterTag lowpassAdapterTag = objectFactory.createLowpassAdapterTag();
+
+                    lowpassAdapterTag.setInterpolationFactor(lowpassAdapterConfiguration.getInterpolationFactor());
+
+                    adapterTag.setLowpass(lowpassAdapterTag);
+                    break;
+
+                case FILTER:
+                    FilteringAdapterConfiguration filteringAdapterConfiguration = (FilteringAdapterConfiguration)adapter;
+                    FilteringAdapterTag filteringAdapterTag = objectFactory.createFilteringAdapterTag();
+
+                    filteringAdapterTag.setMinimumDifference(filteringAdapterConfiguration.getMinimumDifference());
+
+                    adapterTag.setFilter(filteringAdapterTag);
+                    break;
+
+                default:
+                    throw new NotYetImplementedError("unknown adapter class: " + adapter.kindOfAdapter());
+            }
+
+            result.getAdapter().add(adapterTag);
+        }
+
+        // Converting the buffer metainfo.
+        metainfoToXML(configuration.getMetainfo(), result.getMetainfo());
+
+        return result;
+    }
+
+    /**
+     * Sends a "bufferConfiguration" message to the communication partner.
+     *
+     * @param configuration the buffer configuration
+     *
+     * @throws IOException if the send operation fails
+     */
+    void bufferConfiguration(BufferConfiguration configuration) throws IOException {
+
+        checkConnection();
+
+        Message message = objectFactory.createMessage();
+        BufferConfigurationTag bufferConfigurationTag = configurationToXML(configuration);
+
+        message.setBufferConfiguration(bufferConfigurationTag);
+
+        sendMessage("bufferConfiguration()", message);
+    }
+
+    /**
+     * Sends a "getBufferConfiguration" message to the communication partner.
+     *
+     * @param bufferName the name of the buffer
+     *
+     * @throws IOException if the send operation fails
+     */
+    void getBufferConfiguration(String bufferName) throws IOException {
+
+        checkConnection();
+
+        Message message = objectFactory.createMessage();
+        GetBufferConfigurationTag getBufferConfigurationTag = objectFactory.createGetBufferConfigurationTag();
+
+        getBufferConfigurationTag.setName(bufferName);
+
+        message.setGetBufferConfiguration(getBufferConfigurationTag);
+
+        sendMessage(String.format("getBufferConfiguration(%s)", bufferName), message);
+    }
+
+    /**
+     * Sends a "setBufferConfiguration" message to the communication partner.
+     *
+     * @param bufferName    the name of the buffer
+     * @param configuration the buffer configuration
+     * @param createAllowed is the creation of a new buffer allowed
+     *
+     * @throws IOException if the send operation fails
+     */
+    void setBufferConfiguration(String bufferName, BufferConfiguration configuration, boolean createAllowed) throws IOException {
+
+        checkConnection();
+
+        Message message = objectFactory.createMessage();
+        SetBufferConfigurationTag setBufferConfigurationTag = objectFactory.createSetBufferConfigurationTag();
+
+        setBufferConfigurationTag.setName(bufferName);
+        setBufferConfigurationTag.setCreate(createAllowed);
+        setBufferConfigurationTag.setBufferConfiguration(configurationToXML(configuration));
+
+        message.setSetBufferConfiguration(setBufferConfigurationTag);
+
+        sendMessage(String.format("setBufferConfiguration(%s, configuration, %s)", bufferName, Boolean.valueOf(createAllowed).toString()),
+                    message);
+    }
+
+    /**
+     * Sends a "releaseBuffer" message to the communication partner.
+     *
+     * @param bufferName the name of the buffer
+     *
+     * @throws IOException if the send operation fails
+     */
+    void releaseBuffer(String bufferName) throws IOException {
+
+        checkConnection();
+
+        Message message = objectFactory.createMessage();
+        ReleaseBufferTag releaseBufferTag = objectFactory.createReleaseBufferTag();
+
+        releaseBufferTag.setName(bufferName);
+
+        message.setReleaseBuffer(releaseBufferTag);
+
+        sendMessage(String.format("releaseBuffer(%s)", bufferName), message);
     }
 
     /**

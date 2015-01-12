@@ -1,8 +1,8 @@
 //
 // Diese Datei wurde mit der JavaTM Architecture for XML Binding(JAXB) Reference Implementation, v2.2.8-b130911.1802 generiert 
 // Siehe <a href="http://java.sun.com/xml/jaxb">http://java.sun.com/xml/jaxb</a> 
-// Änderungen an dieser Datei gehen bei einer Neukompilierung des Quellschemas verloren. 
-// Generiert: 2015.01.04 um 02:07:43 PM CET 
+// ï¿½nderungen an dieser Datei gehen bei einer Neukompilierung des Quellschemas verloren. 
+// Generiert: 2015.01.09 um 07:33:28 PM CET 
 //
 
 
@@ -77,11 +77,19 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link QueryBuffersTag }
+     * Create an instance of {@link QueryBuffersByNameTag }
      * 
      */
-    public QueryBuffersTag createQueryBuffersTag() {
-        return new QueryBuffersTag();
+    public QueryBuffersByNameTag createQueryBuffersByNameTag() {
+        return new QueryBuffersByNameTag();
+    }
+
+    /**
+     * Create an instance of {@link QueryBuffersByMetainfoTag }
+     * 
+     */
+    public QueryBuffersByMetainfoTag createQueryBuffersByMetainfoTag() {
+        return new QueryBuffersByMetainfoTag();
     }
 
     /**
@@ -93,19 +101,51 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link QueryMetaInfoTag }
+     * Create an instance of {@link QueryMetainfoTag }
      * 
      */
-    public QueryMetaInfoTag createQueryMetaInfoTag() {
-        return new QueryMetaInfoTag();
+    public QueryMetainfoTag createQueryMetainfoTag() {
+        return new QueryMetainfoTag();
     }
 
     /**
-     * Create an instance of {@link BufferMetaInfoTag }
+     * Create an instance of {@link BufferMetainfoTag }
      * 
      */
-    public BufferMetaInfoTag createBufferMetaInfoTag() {
-        return new BufferMetaInfoTag();
+    public BufferMetainfoTag createBufferMetainfoTag() {
+        return new BufferMetainfoTag();
+    }
+
+    /**
+     * Create an instance of {@link GetBufferConfigurationTag }
+     * 
+     */
+    public GetBufferConfigurationTag createGetBufferConfigurationTag() {
+        return new GetBufferConfigurationTag();
+    }
+
+    /**
+     * Create an instance of {@link SetBufferConfigurationTag }
+     * 
+     */
+    public SetBufferConfigurationTag createSetBufferConfigurationTag() {
+        return new SetBufferConfigurationTag();
+    }
+
+    /**
+     * Create an instance of {@link ReleaseBufferTag }
+     * 
+     */
+    public ReleaseBufferTag createReleaseBufferTag() {
+        return new ReleaseBufferTag();
+    }
+
+    /**
+     * Create an instance of {@link BufferConfigurationTag }
+     * 
+     */
+    public BufferConfigurationTag createBufferConfigurationTag() {
+        return new BufferConfigurationTag();
     }
 
     /**
@@ -141,11 +181,82 @@ public class ObjectFactory {
     }
 
     /**
-     * Create an instance of {@link MetaInfoTag }
+     * Create an instance of {@link AdapterTag }
      * 
      */
-    public MetaInfoTag createMetaInfoTag() {
-        return new MetaInfoTag();
+    public AdapterTag createAdapterTag() {
+        return new AdapterTag();
     }
 
+    /**
+     * Create an instance of {@link FilteringAdapterTag }
+     * 
+     */
+    public FilteringAdapterTag createFilteringAdapterTag() {
+        return new FilteringAdapterTag();
+    }
+
+    /**
+     * Create an instance of {@link MetainfoTag }
+     * 
+     */
+    public MetainfoTag createMetainfoTag() {
+        return new MetainfoTag();
+    }
+
+    /**
+     * Create an instance of {@link GathererTag }
+     * 
+     */
+    public GathererTag createGathererTag() {
+        return new GathererTag();
+    }
+
+    /**
+     * Create an instance of {@link TriggeringAdapterTag }
+     * 
+     */
+    public TriggeringAdapterTag createTriggeringAdapterTag() {
+        return new TriggeringAdapterTag();
+    }
+
+    /**
+     * Create an instance of {@link LowpassAdapterTag }
+     * 
+     */
+    public LowpassAdapterTag createLowpassAdapterTag() {
+        return new LowpassAdapterTag();
+    }
+
+    /**
+     * Create an instance of {@link ScalingAdapterTag }
+     * 
+     */
+    public ScalingAdapterTag createScalingAdapterTag() {
+        return new ScalingAdapterTag();
+    }
+
+    /**
+     * Create an instance of {@link TestGathererTag }
+     * 
+     */
+    public TestGathererTag createTestGathererTag() {
+        return new TestGathererTag();
+    }
+
+    /**
+     * Create an instance of {@link DummyGathererTag }
+     * 
+     */
+    public DummyGathererTag createDummyGathererTag() {
+        return new DummyGathererTag();
+    }
+
+    /**
+     * Create an instance of {@link DummyAdapterTag }
+     * 
+     */
+    public DummyAdapterTag createDummyAdapterTag() {
+        return new DummyAdapterTag();
+    }
 }

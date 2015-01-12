@@ -5,12 +5,10 @@ import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint;
 import at.ac.tuwien.infosys.g2021.common.communication.ValueChangeObserver;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,7 +36,7 @@ import java.util.logging.Logger;
  *    DataPoint dataPoint = new DataPoint();
  *
  *    // Now we can query available buffers
- *    Collection&lt;BufferDescription&gt; availableBuffers = dataPoint.queryBuffers("^oufen$", "(keen)|(nischt)");
+ *    Collection&lt;BufferDescription&gt; availableBuffers = dataPoint.queryBuffersByMetainfo("^oufen$", "(keen)|(nischt)");
  *
  *    // Wow, now we can select the best matching buffers.
  *    ...
@@ -66,7 +64,7 @@ import java.util.logging.Logger;
  */
 public class DataPoint {
 
-    // Every connection has an id for logging reasons
+    // Every data point has an id for logging reasons
     private int id;
     private static int nextId = 1;
     private final static Object idLock = new Object();
@@ -86,11 +84,7 @@ public class DataPoint {
      * class. The <tt>{@link at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint}</tt> class
      * uses weak references only, to notify used data points about spontaneous value changes.
      */
-    private class Implementation implements ValueChangeObserver {
-
-        // The communication object to the daemon
-        private ClientEndpoint endpoint;
-        private final Object endpointLock;
+    private class Implementation extends AbstractClientImplementation implements ValueChangeObserver {
 
         // The set of assigned buffers and their values.
         private Map<String, SimpleData> buffers;
@@ -108,49 +102,21 @@ public class DataPoint {
          */
         Implementation() {
 
-            endpointLock = new Object();
+            super();
+
             bufferLock = new Object();
             buffers = new HashMap<>();
             observers = new CopyOnWriteArrayList<>();
             state = BufferState.INITIALIZING;
-            assignClientEndpoint();
-        }
-
-        /**
-         * Get a thread-safe snapshot of the client endpoint.
-         *
-         * @return the current client endpoint
-         */
-        private ClientEndpoint getClientEndpoint() {
-
-            synchronized (endpointLock) {
-                assignClientEndpoint();
-                return endpoint;
-            }
         }
 
         /**
          * Opens a connection to the daemon und registers this data point.
          */
-        private void assignClientEndpoint() {
+        @Override
+        protected ClientEndpoint assignClientEndpoint() {
 
-            ClientEndpoint connected = null;
-
-            synchronized (endpointLock) {
-                if (endpoint == null) {
-                    endpoint = ClientEndpoint.get();
-                    try {
-                        if (!endpoint.isConnected()) {
-                            endpoint.connect();
-                            endpoint.addValueChangeObserver(this);
-                            connected = endpoint;
-                        }
-                    }
-                    catch (IOException e) {
-                        releaseClientEndpoint();
-                    }
-                }
-            }
+            ClientEndpoint connected = super.assignClientEndpoint();
 
             // After reinstallation of a connection, all known buffers must be updated
             if (connected != null) {
@@ -172,19 +138,17 @@ public class DataPoint {
                     }
                 }
             }
+
+            return connected;
         }
 
         /**
          * Release the client endpoint.
          */
-        private void releaseClientEndpoint() {
+        @Override
+        protected void releaseClientEndpoint() {
 
-            synchronized (endpointLock) {
-                if (endpoint != null) {
-                    endpoint.removeValueChangeObserver(this);
-                    endpoint = null;
-                }
-            }
+            super.releaseClientEndpoint();
 
             // Here, there is no connection to the daemon. All of the buffers are in a faulted state!
             synchronized (bufferLock) {
@@ -192,9 +156,7 @@ public class DataPoint {
                 Collection<SimpleData> allBufferStates = buffers.values();
                 Date now = new Date();
 
-                for (SimpleData oldState : allBufferStates) {
-                    valueChanged(new SimpleData(oldState.getBufferName(), now, BufferState.FAULTED));
-                }
+                allBufferStates.forEach(oldState -> valueChanged(new SimpleData(oldState.getBufferName(), now, BufferState.FAULTED)));
             }
         }
 
@@ -207,7 +169,7 @@ public class DataPoint {
         private void fireStateChanged(BufferState oldOne, BufferState newOne) {
 
             logger.info(String.format("The data point #%d changed its state from '%s' to '%s'.", getId(), oldOne.name(), newOne.name()));
-            for (DataPointObserver observer : observers) observer.dataPointStateChanged(DataPoint.this, oldOne, newOne);
+            observers.forEach(observer -> observer.dataPointStateChanged(DataPoint.this, oldOne, newOne));
         }
 
         /**
@@ -217,7 +179,7 @@ public class DataPoint {
          */
         private void fireBufferAssigned(String bufferName) {
 
-            for (DataPointObserver observer : observers) observer.bufferAssigned(DataPoint.this, bufferName);
+            observers.forEach(observer -> observer.bufferAssigned(DataPoint.this, bufferName));
             logger.info(String.format("The buffer '%s' has been assigned to the data point #%d.", bufferName, getId()));
         }
 
@@ -228,7 +190,7 @@ public class DataPoint {
          */
         private void fireBufferDetached(String bufferName) {
 
-            for (DataPointObserver observer : observers) observer.bufferDetached(DataPoint.this, bufferName);
+            observers.forEach(observer -> observer.bufferDetached(DataPoint.this, bufferName));
             logger.info(String.format("The buffer '%s' has been detached from the data point #%d.", bufferName, getId()));
         }
 
@@ -242,7 +204,7 @@ public class DataPoint {
          */
         private void fireBufferChanged(SimpleData oldOne, SimpleData newOne) {
 
-            for (DataPointObserver observer : observers) observer.bufferChanged(DataPoint.this, oldOne, newOne);
+            observers.forEach(observer -> observer.bufferChanged(DataPoint.this, oldOne, newOne));
         }
 
         /**
@@ -250,11 +212,13 @@ public class DataPoint {
          * This method may be called more than once. If the state of this data point is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#RELEASED}</tt>,
          * the method call will have no effect.
          */
+        @Override
         void release() {
 
             buffers.clear();
             observers.clear();
-            releaseClientEndpoint();
+
+            super.release();
         }
 
         /**
@@ -265,7 +229,7 @@ public class DataPoint {
         private BufferState evaluateState() {
 
             // No communication possible
-            if (endpoint == null) return BufferState.RELEASED;
+            if (getClientEndpoint() == null) return BufferState.RELEASED;
 
             // No buffers assigned
             synchronized (bufferLock) {
@@ -337,60 +301,6 @@ public class DataPoint {
          * @return the state of the data point, which is never <tt>null</tt>.
          */
         BufferState getState() { return state; }
-
-        /**
-         * This method looks for available buffers.
-         *
-         * @param bufferName a regular expression specifying the buffer names, which should be scanned for the wanted features. A simple match satisfy
-         *                   the search condition, the regular expression must not match the whole buffer name.
-         * @param feature a regular expression specifying the buffer features, which should be scanned. A simple match satisfy
-         *                the search condition, the regular expression must not match the whole feature description.
-         *
-         * @return a collection of all the buffers matching this query
-         */
-        Set<BufferDescription> queryBuffers(String bufferName, String feature) {
-
-            Set<BufferDescription> result = new HashSet<>();
-            ClientEndpoint endpoint = getClientEndpoint();
-
-            if (endpoint != null) {
-
-                Set<String> names = endpoint.queryBufferNames(bufferName, feature);
-
-                for (String name : names) {
-                    try {
-                        result.add(getBufferDescription(name));
-                    }
-                    catch (IllegalArgumentException e) {
-                        // This buffer may be removed by the buffer manager. Therefore the exception is ignored.
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        /**
-         * This method returns the meta information of a buffer.
-         *
-         * @param name the name of a buffer
-         *
-         * @return the buffer meta information, which is never <tt>null</tt>
-         *
-         * @throws IllegalArgumentException if there exists no buffer with the given buffer name
-         */
-        BufferDescription getBufferDescription(String name) throws IllegalArgumentException {
-
-            ClientEndpoint endpoint = getClientEndpoint();
-
-            if (endpoint != null) {
-
-                Map<String, String> metaData = endpoint.queryMetaInfo(name);
-                if (metaData != null) return new BufferDescription(name, new TreeMap<>(metaData));
-            }
-
-            throw new IllegalArgumentException("unknown buffer '" + name + "'");
-        }
 
         /**
          * Assigns a buffer for read or write access to this data point. This method will have no effect, if the buffer is currently
@@ -583,12 +493,6 @@ public class DataPoint {
                 }
             }
         }
-
-        /**
-         * This is the notification about the lost connection to the daemon.
-         */
-        @Override
-        public void communicationLost() { releaseClientEndpoint(); }
     }
 
     // The implementation of the data point
@@ -662,14 +566,25 @@ public class DataPoint {
     /**
      * This method looks for available buffers.
      *
-     * @param topic   a regular expression specifying the buffer topics, which should be scanned for the wanted features. A simple match satisfy
+     * @param name a regular expression specifying the buffer name, which should be scanned. A simple match satisfy
+     *                the search condition, the regular expression must not match the whole feature description.
+     *
+     * @return a collection of all the buffers matching this query
+     */
+    public Set<BufferDescription> queryBuffersByName(String name) { return implementation.queryBuffersByName(name); }
+
+    /**
+     * This method looks for available buffers.
+     *
+     * @param topic   a regular expression specifying the buffer topics, which should be scanned for the wanted features.
+     *                These are keys of the buffer meta information. A simple match satisfy
      *                the search condition, the regular expression must not match the whole topic name.
      * @param feature a regular expression specifying the buffer features, which should be scanned. A simple match satisfy
      *                the search condition, the regular expression must not match the whole feature description.
      *
      * @return a collection of all the buffers matching this query
      */
-    public Set<BufferDescription> queryBuffers(String topic, String feature) { return implementation.queryBuffers(topic, feature); }
+    public Set<BufferDescription> queryBuffersByMetainfo(String topic, String feature) { return implementation.queryBuffersByMetainfo(topic, feature); }
 
     /**
      * This method looks for available buffers. This query scans all topics of the buffer for the requested feature.
@@ -679,7 +594,7 @@ public class DataPoint {
      *
      * @return a collection of all the buffers matching this query
      */
-    public Set<BufferDescription> queryBuffers(String feature) { return queryBuffers(".*", feature); }
+    public Set<BufferDescription> queryBuffersByMetainfo(String feature) { return queryBuffersByMetainfo(".*", feature); }
 
     /**
      * This method returns the meta information of a buffer.

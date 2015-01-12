@@ -100,7 +100,7 @@ public class LoggingGBot extends Thread {
                 dataPoint.addDataPointObserver(new LoggingObserver());
 
                 // Now we can query all available buffers
-                Collection<BufferDescription> availableBuffers = dataPoint.queryBuffers(".*");
+                Collection<BufferDescription> availableBuffers = dataPoint.queryBuffersByName(".*");
                 if (availableBuffers.size() > 0) {
 
                     // All available buffers will assigned in read only mode. We will log actor states, but we don't control any actors.

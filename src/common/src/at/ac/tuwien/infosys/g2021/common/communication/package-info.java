@@ -79,7 +79,9 @@
  *     GBot                                    daemon
  *       |                                       |
  *       |                                       |
- *       |&lt;queryBuffers&gt;                         |
+ *       |&lt;queryBuffersByName&gt;                   |
+ *       | or                                    |
+ *       |&lt;queryBuffersByMetainfo&gt;               |
  *       |--------------------------------------&gt;| Here the daemon looks for matching buffers
  *       |                                       | and answers with a list of buffer names.
  *       |                       &lt;bufferNames&gt;   |
@@ -156,6 +158,69 @@
  *       |--------------------------------------&gt;| At last the GBot sets the value of an unknown buffer.
  *       |                                       | The daemon rejects this message immediately.
  *       |                          &lt;rejected&gt;   |
+ *       |&lt;--------------------------------------|
+ *       |                                       |
+ *</pre>
+ *
+ * <h4>Reading a buffer configuration</h4>
+ *
+ * <pre>
+ *     GBot                                    daemon
+ *       |                                       |
+ *       |&lt;getBufferConfiguration&gt;               | The buffer manager wants to read the configuration of a buffer.
+ *       |--------------------------------------&gt;| If this is a well known buffer, the daemon returns the
+ *       |               &lt;bufferConfiguration&gt;   | buffer configuration.
+ *       |&lt;--------------------------------------|
+ *       |                                       |
+ *       |                                       |
+ *       |&lt;getBufferConfiguration&gt;               |
+ *       |--------------------------------------&gt;| At last the buffer manager reads the configuration of an
+ *       |                                       | unknown buffer. The daemon rejects this message immediately.
+ *       |                          &lt;rejected&gt;   |
+ *       |&lt;--------------------------------------|
+ *       |                                       |
+ *</pre>
+ *
+ * <h4>Updating a buffer configuration</h4>
+ *
+ * <pre>
+ *     GBot                                    daemon
+ *       |                                       |
+ *       |&lt;getBufferConfiguration&gt;               | The buffer manager wants to read the configuration of a buffer.
+ *       |--------------------------------------&gt;|
+ *       |               &lt;bufferConfiguration&gt;   | The daemon returns the current buffer configuration.
+ *       |&lt;--------------------------------------|
+ *       |                                       |
+ *       |                                       |
+ *       |&lt;setBufferConfiguration&gt;               | After changing some configuration items, the new configuration
+ *       |--------------------------------------&gt;| is sent to the daemon.
+ *       |                                       |
+ *       |                          &lt;accepted&gt;   | The daemon accepts the new configuration.
+ *       |&lt;--------------------------------------|
+ *       |                                    or |
+ *       |                          &lt;rejected&gt;   | The buffer was released in the meantime. The daemon rejects an update.
+ *       |&lt;--------------------------------------|
+ *       |                                       |
+ *</pre>
+ *
+ * <h4>Creating a buffer</h4>
+ *
+ * <p>This works like a buffer update. The only difference is, that the attribute "<tt>create</tt>" of the "<tt>setBufferConfiguration</tt>"
+ * message is set to <tt>true</tt>. With this setting the daemon does not reject configuration for unknown buffers, it creates a new one.
+ * </p>
+ *
+ * <h4>Releasing a buffer</h4>
+ *
+ * <pre>
+ *     GBot                                    daemon
+ *       |                                       |
+ *       |&lt;releaseBuffer&gt;                        | Just the <tt>releaseBuffer</tt>-message ist sent from the buffer manager
+ *       |--------------------------------------&gt;| to the daemon.
+ *       |                                       |
+ *       |                          &lt;accepted&gt;   | The daemon releases the buffer.
+ *       |&lt;--------------------------------------|
+ *       |                                    or |
+ *       |                          &lt;rejected&gt;   | The buffer was released in the meantime. The daemon rejects the second release.
  *       |&lt;--------------------------------------|
  *       |                                       |
  *</pre>

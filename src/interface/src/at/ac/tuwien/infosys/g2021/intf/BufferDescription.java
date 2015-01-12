@@ -75,7 +75,7 @@ public class BufferDescription {
      * @return the meta information assigned to the buffer. The returned map may be empty, if there is no meta information
      * assigned to the buffer, but the result will never be <tt>null</tt>.
      */
-    public Map<String, String> getBufferMetaInfo() { return metaData; }
+    public Map<String, String> getBufferMetainfo() { return metaData; }
 }
 
 

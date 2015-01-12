@@ -1,7 +1,6 @@
 package at.ac.tuwien.infosys.g2021.common.communication;
 
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
-import at.ac.tuwien.infosys.g2021.common.util.PanicError;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.logging.Logger;
@@ -63,15 +62,8 @@ final class CommunicationSettings {
             }
         }
 
-        // Using the local host as default
-        if (result == null) {
-            try {
-                result = InetAddress.getLocalHost();
-            }
-            catch (UnknownHostException e) {
-                throw new PanicError("unable to get the local host name", e);
-            }
-        }
+        // Using the local host loopback address as default
+        if (result == null) result = InetAddress.getLoopbackAddress();
 
         LOGGER.config(String.format("The address '%s' is used as server address.", result.toString()));
         return result;

@@ -1,13 +1,29 @@
 package at.ac.tuwien.infosys.g2021.common.communication;
 
+import at.ac.tuwien.infosys.g2021.common.BufferClass;
+import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
+import at.ac.tuwien.infosys.g2021.common.DummyAdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.DummyGathererConfiguration;
+import at.ac.tuwien.infosys.g2021.common.FilteringAdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.LowpassAdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.ScalingAdapterConfiguration;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferMetaInfoTag;
+import at.ac.tuwien.infosys.g2021.common.TestGathererConfiguration;
+import at.ac.tuwien.infosys.g2021.common.TriggeringAdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.AdapterTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferConfigurationTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferMetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferNamesTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.FilteringAdapterTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GathererTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.LowpassAdapterTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.Message;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.MetaInfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.PushTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ScalingAdapterTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.TriggeringAdapterTag;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
+import at.ac.tuwien.infosys.g2021.common.util.NotYetImplementedError;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -70,6 +86,77 @@ public class ClientEndpoint {
         }
 
         /**
+         * Converts a buffer configuration XML message to a BufferConfiguration object.
+         *
+         * @param configuration the XML message
+         *
+         * @return the buffer configuration
+         */
+        private BufferConfiguration configurationFromXML(BufferConfigurationTag configuration) {
+
+            BufferConfiguration result = new BufferConfiguration();
+
+            // Setting the buffer class
+            result.setBufferClass(BufferClass.valueOf(configuration.getKind()));
+
+            // Converting the gatherer
+            GathererTag gatherer = configuration.getGatherer();
+            if (gatherer.getDummy() != null) {
+                result.setGatherer(new DummyGathererConfiguration());
+            }
+            else if (gatherer.getTest() != null) {
+                result.setGatherer(new TestGathererConfiguration());
+            }
+            else {
+                throw new NotYetImplementedError("unknown gatherer class received");
+            }
+
+            // Converting the adapter settings
+            for (AdapterTag adapter : configuration.getAdapter()) {
+                if (adapter.getDummy() != null) {
+                    result.getAdapterChain().add(new DummyAdapterConfiguration());
+                }
+                else if (adapter.getScale() != null) {
+
+                    ScalingAdapterTag scalingAdapter = adapter.getScale();
+
+                    result.getAdapterChain().add(new ScalingAdapterConfiguration(scalingAdapter.getA(),
+                                                                                 scalingAdapter.getB(),
+                                                                                 scalingAdapter.getC()));
+                }
+                else if (adapter.getTrigger() != null) {
+
+                    TriggeringAdapterTag triggeringAdapter = adapter.getTrigger();
+
+                    result.getAdapterChain().add(new TriggeringAdapterConfiguration(triggeringAdapter.getLowerThreshold(),
+                                                                                    triggeringAdapter.getUpperThreshold(),
+                                                                                    triggeringAdapter.getLowerValue(),
+                                                                                    triggeringAdapter.getUpperValue()));
+                }
+                else if (adapter.getLowpass() != null) {
+
+                    LowpassAdapterTag lowpassAdapter = adapter.getLowpass();
+
+                    result.getAdapterChain().add(new LowpassAdapterConfiguration(lowpassAdapter.getInterpolationFactor()));
+                }
+                else if (adapter.getFilter() != null) {
+
+                    FilteringAdapterTag filteringAdapter = adapter.getFilter();
+
+                    result.getAdapterChain().add(new FilteringAdapterConfiguration(filteringAdapter.getMinimumDifference()));
+                }
+                else {
+                    throw new NotYetImplementedError("unknown gatherer class received");
+                }
+            }
+
+            // Converting the metainfo
+            configuration.getMetainfo().forEach(metainfo -> result.getMetainfo().put(metainfo.getName(), metainfo.getInfo()));
+
+            return result;
+        }
+
+        /**
          * The thread implementation it runs unless the socket is closed. It reads all the messages received and interpret them.
          */
         @Override
@@ -88,20 +175,24 @@ public class ClientEndpoint {
                         logger.fine("An 'Accept' message has been received from buffer daemon.");
                         returnAnswer(new Answer(true));
                     }
-                    else if (message.getBufferMetaInfo() != null) {
-                        logger.fine("A 'BufferMetaInfo' message has been received from buffer daemon.");
+                    else if (message.getBufferConfiguration() != null) {
+                        logger.fine("A 'BufferConfiguration' message has been received from buffer daemon.");
 
-                        BufferMetaInfoTag bufferMetaInfo = message.getBufferMetaInfo();
-                        Map<String, String> metaInfo = new TreeMap<>();
+                        BufferConfigurationTag bufferConfiguration = message.getBufferConfiguration();
+                        returnAnswer(new Answer(configurationFromXML(bufferConfiguration)));
+                    }
+                    else if (message.getBufferMetainfo() != null) {
+                        logger.fine("A 'BufferMetainfo' message has been received from buffer daemon.");
 
-                        for (MetaInfoTag tag : bufferMetaInfo.getMetaInfo()) {
-                            metaInfo.put(tag.getName(), tag.getInfo());
-                        }
+                        BufferMetainfoTag bufferMetainfo = message.getBufferMetainfo();
+                        Map<String, String> metainfo = new TreeMap<>();
 
-                        returnAnswer(new Answer(metaInfo));
+                        bufferMetainfo.getMetainfo().forEach(tag -> metainfo.put(tag.getName(), tag.getInfo()));
+
+                        returnAnswer(new Answer(metainfo));
                     }
                     else if (message.getBufferNames() != null) {
-                        logger.fine("A 'BufferMetaInfo' message has been received from buffer daemon.");
+                        logger.fine("A 'BufferMetainfo' message has been received from buffer daemon.");
 
                         BufferNamesTag bufferNames = message.getBufferNames();
                         Set<String> names = new TreeSet<>(bufferNames.getName());
@@ -120,6 +211,10 @@ public class ClientEndpoint {
                         logger.warning("A 'Get' message has been received from buffer daemon.");
                         handleProtocolViolation();
                     }
+                    else if (message.getGetBufferConfiguration() != null) {
+                        logger.warning("A 'GetBufferConfiguration' message has been received from buffer daemon.");
+                        handleProtocolViolation();
+                    }
                     else if (message.getGetImmediate() != null) {
                         logger.warning("A 'GetImmediate' message has been received from buffer daemon.");
                         handleProtocolViolation();
@@ -135,20 +230,28 @@ public class ClientEndpoint {
                         if (push.isSpontaneous()) fireValueChanged(data);
                         else returnAnswer(new Answer(data));
                     }
-                    else if (message.getQueryBuffers() != null) {
-                        logger.warning("A 'QueryBuffers' message has been received from buffer daemon.");
+                    else if (message.getQueryBuffersByMetainfo() != null) {
+                        logger.warning("A 'QueryBuffersByMetainfo' message has been received from buffer daemon.");
                         handleProtocolViolation();
                     }
-                    else if (message.getQueryMetaInfo() != null) {
-                        logger.warning("A 'QueryMetaInfo' message has been received from buffer daemon.");
+                    else if (message.getQueryMetainfo() != null) {
+                        logger.warning("A 'QueryMetainfo' message has been received from buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getRejected() != null) {
                         logger.fine("A 'Rejected' message has been received from buffer daemon.");
                         returnAnswer(new Answer(false));
                     }
+                    else if (message.getReleaseBuffer() != null) {
+                        logger.warning("A 'ReleaseBuffer' message has been received from buffer daemon.");
+                        handleProtocolViolation();
+                    }
                     else if (message.getSet() != null) {
                         logger.warning("A 'Set' message has been received from buffer daemon.");
+                        handleProtocolViolation();
+                    }
+                    else if (message.getSetBufferConfiguration() != null) {
+                        logger.warning("A 'GetBufferConfiguration' message has been received from buffer daemon.");
                         handleProtocolViolation();
                     }
                     else {
@@ -447,12 +550,8 @@ public class ClientEndpoint {
 
         // If there is no more instance to receive values, the daemon connection is closed
         synchronized (observers) {
-            if (observers.size() == 1) {
-                if (observers.remove(observer) != null) disconnect();
-            }
-            else {
-                observers.remove(observer);
-            }
+            observers.remove(observer);
+            if (observers.size() == 0) disconnect();
         }
     }
 
@@ -465,7 +564,6 @@ public class ClientEndpoint {
 
         Collection<ValueChangeObserver> result = new ArrayList<>();
 
-        // If there is no more instance to receive values, the daemon connection is closed
         synchronized (observers) {
             result.addAll(observers.keySet());
         }
@@ -476,17 +574,47 @@ public class ClientEndpoint {
     /**
      * Notifies any listening ValueChangeObserver about a lost connection.
      */
-    private void fireCommunicationLost() {
-
-        for (ValueChangeObserver observer : getObservers()) observer.communicationLost();
-    }
+    private void fireCommunicationLost() { getObservers().forEach(ValueChangeObserver::communicationLost); }
 
     /**
      * Notifies any listening ValueChangeObserver about a value change.
      *
      * @param value the new value
      */
-    private void fireValueChanged(SimpleData value) { for (ValueChangeObserver observer : getObservers()) observer.valueChanged(value); }
+    private void fireValueChanged(SimpleData value) { getObservers().forEach(observer -> observer.valueChanged(value)); }
+
+    /**
+     * This method looks for available buffers.
+     *
+     * @param name a regular expression specifying the buffer name, which should be scanned. A simple match satisfy
+     *                the search condition, the regular expression must not match the whole feature description.
+     *
+     * @return a collection of the names of all the buffers matching this query
+     */
+    public Set<String> queryBuffersByName(String name) {
+
+        Set<String> result = new HashSet<>();
+
+        requestSerializer.lock();
+        try {
+            sender.queryBuffersByName(name);
+            result = waitForAnAnswer().get();
+        }
+        catch (ClassCastException cc) {
+            // The result is correct.
+        }
+        catch (NullPointerException np) {
+            handleDumblyDaemon();
+        }
+        catch (Exception io) {
+            handleCommunicationError(io);
+        }
+        finally {
+            requestSerializer.unlock();
+        }
+
+        return result;
+    }
 
     /**
      * This method looks for available buffers.
@@ -498,13 +626,13 @@ public class ClientEndpoint {
      *
      * @return a collection of the names of all the buffers matching this query
      */
-    public Set<String> queryBufferNames(String topic, String feature) {
+    public Set<String> queryBuffersByMetainfo(String topic, String feature) {
 
         Set<String> result = new HashSet<>();
 
         requestSerializer.lock();
         try {
-            sender.queryBuffers(topic, feature);
+            sender.queryBuffersByMetainfo(topic, feature);
             result = waitForAnAnswer().get();
         }
         catch (ClassCastException cc) {
@@ -530,13 +658,13 @@ public class ClientEndpoint {
      *
      * @return the buffer meta information, which is <tt>null</tt> if the buffer doesn't exists or the connection to the daemon is broken
      */
-    public Map<String, String> queryMetaInfo(String name) {
+    public Map<String, String> queryMetainfo(String name) {
 
         Map<String, String> result = null;
 
         requestSerializer.lock();
         try {
-            sender.queryMetaInfo(name);
+            sender.queryMetainfo(name);
             result = waitForAnAnswer().get();
         }
         catch (ClassCastException cc) {
@@ -553,6 +681,98 @@ public class ClientEndpoint {
         }
 
         return result;
+    }
+
+    /**
+     * Get the current configuration data of a buffer.
+     *
+     * @param bufferName the name of the buffer
+     *
+     * @return the current buffer configuration
+     *
+     * @throws java.lang.IllegalArgumentException there is no buffer with the given buffer name
+     */
+    public BufferConfiguration getBufferConfiguration(String bufferName) throws IllegalArgumentException {
+
+        requestSerializer.lock();
+        try {
+            sender.getBufferConfiguration(bufferName);
+            return waitForAnAnswer().get();
+        }
+        catch (ClassCastException cc) {
+            throw new IllegalArgumentException("unknown buffer " + bufferName);
+        }
+        catch (NullPointerException np) {
+            handleDumblyDaemon();
+            return null;
+        }
+        catch (Exception io) {
+            handleCommunicationError(io);
+            return null;
+        }
+        finally {
+            requestSerializer.unlock();
+        }
+    }
+
+    /**
+     * Changes the current configuration of a buffer.
+     *
+     * @param bufferName    the name of the buffer
+     * @param configuration the new buffer configuration
+     * @param createAllowed is the creation of a new buffer allowed
+     *
+     * @return <tt>true</tt>, if the configuration was successfully changed in the daemon
+     *
+     * @throws java.lang.IllegalArgumentException there is no buffer with the given buffer name
+     */
+    public boolean setBufferConfiguration(String bufferName, BufferConfiguration configuration, boolean createAllowed) throws IllegalArgumentException {
+
+        requestSerializer.lock();
+        try {
+            sender.setBufferConfiguration(bufferName, configuration, createAllowed);
+            return waitForAnAnswer().get();
+        }
+        catch (NullPointerException np) {
+            handleDumblyDaemon();
+            return false;
+        }
+        catch (Exception io) {
+            handleCommunicationError(io);
+            return false;
+        }
+        finally {
+            requestSerializer.unlock();
+        }
+    }
+
+    /**
+     * Changes the current configuration of a buffer.
+     *
+     * @param bufferName the name of the buffer
+     *
+     * @return <tt>true</tt>, if the configuration was successfully changed in the daemon
+     *
+     * @throws java.lang.IllegalArgumentException there is no buffer with the given buffer name
+     */
+    public boolean releaseBuffer(String bufferName) throws IllegalArgumentException {
+
+        requestSerializer.lock();
+        try {
+            sender.releaseBuffer(bufferName);
+            return waitForAnAnswer().get();
+        }
+        catch (NullPointerException np) {
+            handleDumblyDaemon();
+            return false;
+        }
+        catch (Exception io) {
+            handleCommunicationError(io);
+            return false;
+        }
+        finally {
+            requestSerializer.unlock();
+        }
     }
 
     /**

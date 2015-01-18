@@ -104,7 +104,7 @@ public class LoggingGBot extends Thread {
                 if (availableBuffers.size() > 0) {
 
                     // All available buffers will assigned in read only mode. We will log actor states, but we don't control any actors.
-                    availableBuffers.forEach((bufferDescription) -> dataPoint.assign(bufferDescription.getBufferName()));
+                    for (BufferDescription bufferDescription : availableBuffers) dataPoint.assign(bufferDescription.getBufferName());
 
                     // Now we wait for changes for an infinite time.
                     try {

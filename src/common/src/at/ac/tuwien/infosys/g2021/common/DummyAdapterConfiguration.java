@@ -1,13 +1,9 @@
 package at.ac.tuwien.infosys.g2021.common;
 
-/**
- * A DUMMY-adapter has no configuration features.
- */
+/** A DUMMY-adapter has no configuration features. It makes no value transformation. */
 public class DummyAdapterConfiguration implements AdapterConfiguration {
 
-    /**
-     * Initialization.
-     */
+    /** Initialization. */
     public DummyAdapterConfiguration() {}
 
     /**

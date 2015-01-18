@@ -1,29 +1,15 @@
 package at.ac.tuwien.infosys.g2021.common.communication;
 
-import at.ac.tuwien.infosys.g2021.common.BufferClass;
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
-import at.ac.tuwien.infosys.g2021.common.DummyAdapterConfiguration;
-import at.ac.tuwien.infosys.g2021.common.DummyGathererConfiguration;
-import at.ac.tuwien.infosys.g2021.common.FilteringAdapterConfiguration;
-import at.ac.tuwien.infosys.g2021.common.LowpassAdapterConfiguration;
-import at.ac.tuwien.infosys.g2021.common.ScalingAdapterConfiguration;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
-import at.ac.tuwien.infosys.g2021.common.TestGathererConfiguration;
-import at.ac.tuwien.infosys.g2021.common.TriggeringAdapterConfiguration;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.AdapterTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferConfigurationTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferMetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferNamesTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.FilteringAdapterTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GathererTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.LowpassAdapterTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.Message;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.MetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.PushTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ScalingAdapterTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.TriggeringAdapterTag;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
-import at.ac.tuwien.infosys.g2021.common.util.NotYetImplementedError;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
@@ -46,18 +32,14 @@ import java.util.logging.Logger;
 /**
  * This is the connection endpoint at a JVM containing GBots with its DataPoint instances. It is implemented as singleton, because there is
  * only one TCP/IP connection to the daemon per JVM necessary.
- * <p>
+ * <p/>
  */
 public class ClientEndpoint {
 
-    /**
-     * This inner class is a thread listening for messages from the daemon.
-     */
+    /** This inner class is a thread listening for messages from the daemon. */
     private class Receiver extends Thread {
 
-        /**
-         * Initialization.
-         */
+        /** Initialization. */
         Receiver() {
             super("message receiver thread");
             setDaemon(true);
@@ -85,86 +67,17 @@ public class ClientEndpoint {
             }
         }
 
-        /**
-         * Converts a buffer configuration XML message to a BufferConfiguration object.
-         *
-         * @param configuration the XML message
-         *
-         * @return the buffer configuration
-         */
-        private BufferConfiguration configurationFromXML(BufferConfigurationTag configuration) {
-
-            BufferConfiguration result = new BufferConfiguration();
-
-            // Setting the buffer class
-            result.setBufferClass(BufferClass.valueOf(configuration.getKind()));
-
-            // Converting the gatherer
-            GathererTag gatherer = configuration.getGatherer();
-            if (gatherer.getDummy() != null) {
-                result.setGatherer(new DummyGathererConfiguration());
-            }
-            else if (gatherer.getTest() != null) {
-                result.setGatherer(new TestGathererConfiguration());
-            }
-            else {
-                throw new NotYetImplementedError("unknown gatherer class received");
-            }
-
-            // Converting the adapter settings
-            for (AdapterTag adapter : configuration.getAdapter()) {
-                if (adapter.getDummy() != null) {
-                    result.getAdapterChain().add(new DummyAdapterConfiguration());
-                }
-                else if (adapter.getScale() != null) {
-
-                    ScalingAdapterTag scalingAdapter = adapter.getScale();
-
-                    result.getAdapterChain().add(new ScalingAdapterConfiguration(scalingAdapter.getA(),
-                                                                                 scalingAdapter.getB(),
-                                                                                 scalingAdapter.getC()));
-                }
-                else if (adapter.getTrigger() != null) {
-
-                    TriggeringAdapterTag triggeringAdapter = adapter.getTrigger();
-
-                    result.getAdapterChain().add(new TriggeringAdapterConfiguration(triggeringAdapter.getLowerThreshold(),
-                                                                                    triggeringAdapter.getUpperThreshold(),
-                                                                                    triggeringAdapter.getLowerValue(),
-                                                                                    triggeringAdapter.getUpperValue()));
-                }
-                else if (adapter.getLowpass() != null) {
-
-                    LowpassAdapterTag lowpassAdapter = adapter.getLowpass();
-
-                    result.getAdapterChain().add(new LowpassAdapterConfiguration(lowpassAdapter.getInterpolationFactor()));
-                }
-                else if (adapter.getFilter() != null) {
-
-                    FilteringAdapterTag filteringAdapter = adapter.getFilter();
-
-                    result.getAdapterChain().add(new FilteringAdapterConfiguration(filteringAdapter.getMinimumDifference()));
-                }
-                else {
-                    throw new NotYetImplementedError("unknown gatherer class received");
-                }
-            }
-
-            // Converting the metainfo
-            configuration.getMetainfo().forEach(metainfo -> result.getMetainfo().put(metainfo.getName(), metainfo.getInfo()));
-
-            return result;
-        }
-
-        /**
-         * The thread implementation it runs unless the socket is closed. It reads all the messages received and interpret them.
-         */
+        /** The thread implementation it runs unless the socket is closed. It reads all the messages received and interpret them. */
         @Override
         public void run() {
 
+            // A local copy of the connection to be thread-safe
+            Connection daemon = connection;
+
+            if (daemon != null) logger.fine("The receiver thread for daemon messages is started.");
+
             try {
-                // A local copy of the connection to be thread-safe
-                Connection daemon = connection;
+                JAXBInterface jaxb = new JAXBInterface();
 
                 while (daemon != null && !interrupted()) {
 
@@ -172,55 +85,57 @@ public class ClientEndpoint {
 
                     // Interpret the received message and create an answer.
                     if (message.getAccepted() != null) {
-                        logger.fine("An 'Accept' message has been received from buffer daemon.");
+                        logger.fine("An 'Accept' message has been received from the buffer daemon.");
                         returnAnswer(new Answer(true));
                     }
                     else if (message.getBufferConfiguration() != null) {
-                        logger.fine("A 'BufferConfiguration' message has been received from buffer daemon.");
+                        logger.fine("A 'BufferConfiguration' message has been received from the buffer daemon.");
 
                         BufferConfigurationTag bufferConfiguration = message.getBufferConfiguration();
-                        returnAnswer(new Answer(configurationFromXML(bufferConfiguration)));
+                        returnAnswer(new Answer(jaxb.configurationFromXML(bufferConfiguration)));
                     }
                     else if (message.getBufferMetainfo() != null) {
-                        logger.fine("A 'BufferMetainfo' message has been received from buffer daemon.");
+                        logger.fine("A 'BufferMetainfo' message has been received from the buffer daemon.");
 
                         BufferMetainfoTag bufferMetainfo = message.getBufferMetainfo();
                         Map<String, String> metainfo = new TreeMap<>();
 
-                        bufferMetainfo.getMetainfo().forEach(tag -> metainfo.put(tag.getName(), tag.getInfo()));
+                        for (MetainfoTag tag : bufferMetainfo.getMetainfo()) metainfo.put(tag.getName(), tag.getInfo());
 
                         returnAnswer(new Answer(metainfo));
                     }
                     else if (message.getBufferNames() != null) {
-                        logger.fine("A 'BufferMetainfo' message has been received from buffer daemon.");
 
                         BufferNamesTag bufferNames = message.getBufferNames();
                         Set<String> names = new TreeSet<>(bufferNames.getName());
 
+                        logger.fine(String.format("A 'BufferNames' message with %d entries has been received from the buffer daemon.",
+                                                  bufferNames.getName().size()));
+
                         returnAnswer(new Answer(names));
                     }
                     else if (message.getDisconnect() != null) {
-                        logger.warning("A 'Disconnect' message has been received from buffer daemon.");
+                        logger.warning("A 'Disconnect' message has been received from the buffer daemon.");
                         disconnectImmediately();
                     }
                     else if (message.getEstablish() != null) {
-                        logger.warning("An 'Establish' message has been received from buffer daemon.");
+                        logger.warning("An 'Establish' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getGet() != null) {
-                        logger.warning("A 'Get' message has been received from buffer daemon.");
+                        logger.warning("A 'Get' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getGetBufferConfiguration() != null) {
-                        logger.warning("A 'GetBufferConfiguration' message has been received from buffer daemon.");
+                        logger.warning("A 'GetBufferConfiguration' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getGetImmediate() != null) {
-                        logger.warning("A 'GetImmediate' message has been received from buffer daemon.");
+                        logger.warning("A 'GetImmediate' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getPush() != null) {
-                        logger.fine("A 'Push' message has been received from buffer daemon.");
+                        logger.fine("A 'Push' message has been received from the buffer daemon.");
 
                         PushTag push = message.getPush();
                         SimpleData data = new SimpleData(push.getName(),
@@ -231,31 +146,39 @@ public class ClientEndpoint {
                         else returnAnswer(new Answer(data));
                     }
                     else if (message.getQueryBuffersByMetainfo() != null) {
-                        logger.warning("A 'QueryBuffersByMetainfo' message has been received from buffer daemon.");
+                        logger.warning("A 'QueryBuffersByMetainfo' message has been received from the buffer daemon.");
+                        handleProtocolViolation();
+                    }
+                    else if (message.getQueryBuffersByName() != null) {
+                        logger.warning("A 'QueryBuffersByName' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getQueryMetainfo() != null) {
-                        logger.warning("A 'QueryMetainfo' message has been received from buffer daemon.");
+                        logger.warning("A 'QueryMetainfo' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getRejected() != null) {
-                        logger.fine("A 'Rejected' message has been received from buffer daemon.");
+                        logger.fine("A 'Rejected' message has been received from the buffer daemon.");
                         returnAnswer(new Answer(false));
                     }
                     else if (message.getReleaseBuffer() != null) {
-                        logger.warning("A 'ReleaseBuffer' message has been received from buffer daemon.");
+                        logger.warning("A 'ReleaseBuffer' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getSet() != null) {
-                        logger.warning("A 'Set' message has been received from buffer daemon.");
+                        logger.warning("A 'Set' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else if (message.getSetBufferConfiguration() != null) {
-                        logger.warning("A 'GetBufferConfiguration' message has been received from buffer daemon.");
+                        logger.warning("A 'GetBufferConfiguration' message has been received from the buffer daemon.");
+                        handleProtocolViolation();
+                    }
+                    else if (message.getShutdown() != null) {
+                        logger.warning("A 'Shutdown' message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
                     else {
-                        logger.warning("An unknown message has been received from buffer daemon.");
+                        logger.warning("An unknown message has been received from the buffer daemon.");
                         handleProtocolViolation();
                     }
 
@@ -265,13 +188,11 @@ public class ClientEndpoint {
             catch (Exception e) {
 
                 // An understandable exception, if the connection was closed.
-                if (connection != null) handleCommunicationError(e);
+                if (connection != null && connection.isConnected()) handleCommunicationError(e);
             }
         }
 
-        /**
-         * Stops the receiver thread.
-         */
+        /** Stops the receiver thread. */
         void shutdown() { interrupt(); }
     }
 
@@ -300,9 +221,7 @@ public class ClientEndpoint {
     // The message sender
     private MessageSender sender;
 
-    /**
-     * Initialisation of the endpoint instance.
-     */
+    /** Initialisation of the endpoint instance. */
     private ClientEndpoint() {
 
         synchronizer = new Exchanger<>();
@@ -381,7 +300,7 @@ public class ClientEndpoint {
                 }
                 catch (NullPointerException np) {
                     handleDumblyDaemon();
-                    throw new IOException("missing answer from buffer daemon");
+                    throw new IOException("missing answer from the buffer daemon");
                 }
                 catch (ClassCastException cc) {
                     handleProtocolViolation();
@@ -428,7 +347,7 @@ public class ClientEndpoint {
      * Closes the connection to the daemon. Is the connection is not established, any call to this
      * method is ignored.
      */
-    void disconnect() {
+    public void disconnect() {
 
         synchronized (connectionLock) {
             if (isConnected()) {
@@ -446,6 +365,15 @@ public class ClientEndpoint {
                     finally {
                         requestSerializer.unlock();
                     }
+                }
+
+                // wait a moment to give the peer a chance to receive this message
+                try {
+                    Thread.sleep(100L);
+                }
+                catch (InterruptedException e) {
+                    // Ok. Due to the close of the socket, the communication may break down
+                    // and IOExceptions are thrown. This may result only in ugly log messages.
                 }
 
                 // Close the connection now
@@ -485,9 +413,7 @@ public class ClientEndpoint {
         return result;
     }
 
-    /**
-     * A protocol violation has occurred. The connection will be closed.
-     */
+    /** A protocol violation has occurred. The connection will be closed. */
     private void handleProtocolViolation() {
 
         logger.warning(String.format("The daemon at '%s:%d' uses an unknown protocol.",
@@ -496,9 +422,7 @@ public class ClientEndpoint {
         disconnectImmediately();
     }
 
-    /**
-     * The daemon doesn't answer.
-     */
+    /** The daemon doesn't answer. */
     private void handleDumblyDaemon() {
 
         logger.warning(String.format("The daemon at '%s:%d' doesn't answer.",
@@ -571,23 +495,45 @@ public class ClientEndpoint {
         return result;
     }
 
-    /**
-     * Notifies any listening ValueChangeObserver about a lost connection.
-     */
-    private void fireCommunicationLost() { getObservers().forEach(ValueChangeObserver::communicationLost); }
+    /** Notifies any listening ValueChangeObserver about a lost connection. */
+    private void fireCommunicationLost() { for (ValueChangeObserver observer : getObservers()) observer.communicationLost(); }
 
     /**
      * Notifies any listening ValueChangeObserver about a value change.
      *
      * @param value the new value
      */
-    private void fireValueChanged(SimpleData value) { getObservers().forEach(observer -> observer.valueChanged(value)); }
+    private void fireValueChanged(SimpleData value) { for (ValueChangeObserver observer : getObservers()) observer.valueChanged(value); }
+
+    /**
+     * This method sends a shutdown message.
+     *
+     * @return true, if the shutdown message was sent.
+     */
+    public boolean shutdown() {
+
+        boolean result = false;
+
+        requestSerializer.lock();
+        try {
+            sender.shutdown();
+            result = true;
+        }
+        catch (Exception io) {
+            handleCommunicationError(io);
+        }
+        finally {
+            requestSerializer.unlock();
+        }
+
+        return result;
+    }
 
     /**
      * This method looks for available buffers.
      *
      * @param name a regular expression specifying the buffer name, which should be scanned. A simple match satisfy
-     *                the search condition, the regular expression must not match the whole feature description.
+     *             the search condition, the regular expression must not match the whole feature description.
      *
      * @return a collection of the names of all the buffers matching this query
      */
@@ -690,7 +636,8 @@ public class ClientEndpoint {
      *
      * @return the current buffer configuration
      *
-     * @throws java.lang.IllegalArgumentException there is no buffer with the given buffer name
+     * @throws java.lang.IllegalArgumentException
+     *          there is no buffer with the given buffer name
      */
     public BufferConfiguration getBufferConfiguration(String bufferName) throws IllegalArgumentException {
 
@@ -723,10 +670,8 @@ public class ClientEndpoint {
      * @param createAllowed is the creation of a new buffer allowed
      *
      * @return <tt>true</tt>, if the configuration was successfully changed in the daemon
-     *
-     * @throws java.lang.IllegalArgumentException there is no buffer with the given buffer name
      */
-    public boolean setBufferConfiguration(String bufferName, BufferConfiguration configuration, boolean createAllowed) throws IllegalArgumentException {
+    public boolean setBufferConfiguration(String bufferName, BufferConfiguration configuration, boolean createAllowed) {
 
         requestSerializer.lock();
         try {
@@ -753,7 +698,8 @@ public class ClientEndpoint {
      *
      * @return <tt>true</tt>, if the configuration was successfully changed in the daemon
      *
-     * @throws java.lang.IllegalArgumentException there is no buffer with the given buffer name
+     * @throws java.lang.IllegalArgumentException
+     *          there is no buffer with the given buffer name
      */
     public boolean releaseBuffer(String bufferName) throws IllegalArgumentException {
 
@@ -782,7 +728,8 @@ public class ClientEndpoint {
      *
      * @return the current buffer data
      *
-     * @throws java.lang.IllegalArgumentException there is no buffer with the given buffer name assigned to this data point
+     * @throws java.lang.IllegalArgumentException
+     *          there is no buffer with the given buffer name assigned to this data point
      */
     public SimpleData getImmediate(String bufferName) throws IllegalArgumentException {
 
@@ -832,7 +779,9 @@ public class ClientEndpoint {
      * @param bufferName the name of the actor buffer
      * @param value      the new value
      *
-     * @throws IllegalStateException    if the buffer isn't an actor or the actor isn't in the state <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#READY}</tt>.
+     * @return the current actor value
+     *
+     * @throws IllegalStateException if the buffer isn't an actor or the actor isn't in the state <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#READY}</tt>.
      */
     public SimpleData set(String bufferName, Number value) throws IllegalStateException {
 

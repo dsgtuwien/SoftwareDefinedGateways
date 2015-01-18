@@ -43,19 +43,13 @@ public class TimeControl {
     // A thread synchronization object
     private final Object lock;
 
-    /**
-     * This is the implementation of the timer task used in this class.
-     */
+    /** This is the implementation of the timer task used in this class. */
     private class Executor extends TimerTask {
 
-        /**
-         * Initialization of this instance.
-         */
+        /** Initialization of this instance. */
         Executor() { super(); }
 
-        /**
-         * The action to be performed by this timer task.
-         */
+        /** The action to be performed by this timer task. */
         @Override
         public void run() {
 
@@ -70,9 +64,7 @@ public class TimeControl {
         }
     }
 
-    /**
-     * Initialization of the timer.
-     */
+    /** Initialization of the timer. */
     private TimeControl() {
 
         super();
@@ -80,9 +72,7 @@ public class TimeControl {
         lock = new Object();
     }
 
-    /**
-     * Initialization of the timer.
-     */
+    /** Initialization of the timer. */
     TimeControl(DataPoint dp) {
 
         this();
@@ -165,9 +155,7 @@ public class TimeControl {
         }
     }
 
-    /**
-     * Restarts the <code>Timer</code>, clearing the result queue und start data retrieval with its initial delay.
-     */
+    /** Restarts the <code>Timer</code>, clearing the result queue und start data retrieval with its initial delay. */
     public void restart() {
 
         synchronized (lock) {

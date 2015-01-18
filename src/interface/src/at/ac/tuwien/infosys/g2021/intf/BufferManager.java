@@ -7,9 +7,7 @@ import at.ac.tuwien.infosys.g2021.common.util.Loggers;
 import java.util.Set;
 import java.util.logging.Logger;
 
-/**
- * The BufferManager is used to create, configure and delete buffers.
- */
+/** The BufferManager is used to create, configure and delete buffers. */
 public class BufferManager {
 
     // The logger
@@ -24,7 +22,7 @@ public class BufferManager {
      * Due to information hiding issues, the functionality of a buffer manager isn't implemented in the class
      * <tt>{@link at.ac.tuwien.infosys.g2021.intf.BufferManager}</tt> itself. This inner class is the real implementation
      * of a buffer manager.
-     * <p>
+     * <p/>
      * To prevent useless instances of this class - not regular released objects - there must not exist any
      * hard reference to this class except the only one in the <tt>{@link at.ac.tuwien.infosys.g2021.intf.BufferManager}</tt>
      * class. The <tt>{@link at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint}</tt> class
@@ -44,9 +42,10 @@ public class BufferManager {
          * @param name the name of the buffer
          *
          * @return the configuration of this buffer. The result may be <tt>null</tt>, if no communication with the buffer
-         * daemon is possible.
+         *         daemon is possible.
          *
-         * @throws java.lang.IllegalArgumentException if the buffer is unknown
+         * @throws java.lang.IllegalArgumentException
+         *          if the buffer is unknown
          */
         BufferConfiguration get(String name) throws IllegalArgumentException {
 
@@ -64,10 +63,8 @@ public class BufferManager {
          * @param createAllowed if the creation of a new buffer is allowed
          *
          * @return <tt>true</tt>, if the configuration was successfully changed in the daemon
-         *
-         * @throws java.lang.IllegalArgumentException if the buffer is unknown
          */
-        boolean update(String name, BufferConfiguration configuration, boolean createAllowed) throws IllegalArgumentException {
+        boolean update(String name, BufferConfiguration configuration, boolean createAllowed) {
 
             ClientEndpoint endpoint = getClientEndpoint();
 
@@ -82,7 +79,8 @@ public class BufferManager {
          *
          * @return <tt>true</tt>, if the configuration was successfully changed in the daemon
          *
-         * @throws java.lang.IllegalArgumentException if the buffer is unknown
+         * @throws java.lang.IllegalArgumentException
+         *          if the buffer is unknown
          */
         public boolean release(String name) {
 
@@ -96,10 +94,49 @@ public class BufferManager {
     // The implementation of the data point
     private Implementation implementation;
 
-    // Initialization of the buffer manager.
+    /** Initialization of the buffer manager. */
     public BufferManager() {
 
-        logger.info("The buffer manager has been created.");
+        // Evaluating the id
+        synchronized (idLock) {
+            id = nextId++;
+        }
+
+        // Initializing the implementation
+        implementation = new Implementation();
+
+        logger.info("The buffer manager #" + getId() + "has been created.");
+    }
+
+    /**
+     * Returns the id of this connection.
+     *
+     * @return the id
+     */
+    private int getId() { return id; }
+
+    /**
+     * Called by the garbage collector on this object when garbage collection
+     * determines that there are no more references to the object. All used
+     * system resources are released.
+     *
+     * @throws Throwable the {@code Exception} raised by this method
+     */
+    @Override
+    protected void finalize() throws Throwable {
+
+        release();
+        super.finalize();
+    }
+
+    /**
+     * Releases all system resources. This method may be called more than once. If the buffer manager is already released,
+     * the method call will have no effect.
+     */
+    public void release() {
+
+        implementation.release();
+        logger.info("The buffer manager #" + getId() + " has been released.");
     }
 
     /**
@@ -146,7 +183,8 @@ public class BufferManager {
      * @return the configuration of this buffer. The result may be <tt>null</tt>, if no communication with the buffer
      *         daemon is possible.
      *
-     * @throws java.lang.IllegalArgumentException if the buffer is unknown
+     * @throws java.lang.IllegalArgumentException
+     *          if the buffer is unknown
      */
     public BufferConfiguration get(String name) throws IllegalArgumentException { return implementation.get(name); }
 
@@ -167,18 +205,11 @@ public class BufferManager {
      * @param name          the name of the buffer
      * @param configuration the buffer configuration
      *
-     * @throws java.lang.IllegalArgumentException if the buffer is unknown
-     *
      * @return <tt>true</tt>, if the configuration was successfully changed in the daemon
      */
-    public boolean update(String name, BufferConfiguration configuration) throws IllegalArgumentException {
+    public boolean update(String name, BufferConfiguration configuration) {
 
-        try {
-            return implementation.update(name, configuration, false);
-        }
-        catch (IllegalArgumentException e) {
-            return false;
-        }
+        return implementation.update(name, configuration, false);
     }
 
     /**
@@ -186,9 +217,10 @@ public class BufferManager {
      *
      * @param name the name of the buffer
      *
-     * @throws java.lang.IllegalArgumentException if the buffer is unknown
-     *
      * @return <tt>true</tt>, if the configuration was successfully changed in the daemon
+     *
+     * @throws java.lang.IllegalArgumentException
+     *          if the buffer is unknown
      */
     public boolean release(String name) { return implementation.release(name); }
 }

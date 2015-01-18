@@ -1,27 +1,17 @@
 package at.ac.tuwien.infosys.g2021.common.communication;
 
-import at.ac.tuwien.infosys.g2021.common.AdapterConfiguration;
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
-import at.ac.tuwien.infosys.g2021.common.FilteringAdapterConfiguration;
-import at.ac.tuwien.infosys.g2021.common.GathererConfiguration;
-import at.ac.tuwien.infosys.g2021.common.LowpassAdapterConfiguration;
-import at.ac.tuwien.infosys.g2021.common.ScalingAdapterConfiguration;
-import at.ac.tuwien.infosys.g2021.common.TriggeringAdapterConfiguration;
+import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.AcceptedTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.AdapterTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferConfigurationTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferMetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferNamesTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.DisconnectTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.EstablishTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.FilteringAdapterTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GathererTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetBufferConfigurationTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetImmediateTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.LowpassAdapterTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.Message;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.MetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ObjectFactory;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.PushTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersByMetainfoTag;
@@ -29,26 +19,22 @@ import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersByNameTa
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryMetainfoTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.RejectedTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ReleaseBufferTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ScalingAdapterTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.SetBufferConfigurationTag;
 import at.ac.tuwien.infosys.g2021.common.communication.jaxb.SetTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.TriggeringAdapterTag;
+import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ShutdownTag;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
-import at.ac.tuwien.infosys.g2021.common.util.NotYetImplementedError;
 import at.ac.tuwien.infosys.g2021.common.util.PanicError;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 
-/**
- * This class transforms a method interface into message objects and sends the message objects to the communication partner.
- */
+/** This class transforms a method interface into message objects and sends the message objects to the communication partner. */
 class MessageSender {
 
     // The factory to create messages
@@ -64,9 +50,7 @@ class MessageSender {
     // The logger
     private final static Logger logger = Loggers.getLogger(MessageSender.class);
 
-    /**
-     * Initialize an instance with no communication partner assigned.
-     */
+    /** Initialize an instance with no communication partner assigned. */
     MessageSender() {
 
         try {
@@ -79,9 +63,7 @@ class MessageSender {
         }
     }
 
-    /**
-     * Initialize an instance and assigns a connection to it.
-     */
+    /** Initialize an instance and assigns a connection to it. */
     MessageSender(Connection c) {
 
         this();
@@ -124,7 +106,7 @@ class MessageSender {
     private void sendMessage(String name, Message message) throws IOException {
 
         connection.send(message);
-        logger.fine(String.format("The message '%s' has been sent over the connection #%d", name, connection.getId()));
+        logger.fine(String.format("The message '%s' has been sent over the connection #%d.", name, connection.getId()));
     }
 
     /**
@@ -178,7 +160,7 @@ class MessageSender {
         rejectedTag.setReason(reason);
         message.setRejected(rejectedTag);
 
-        sendMessage(String.format("establish(%s)", reason), message);
+        sendMessage(String.format("rejected(%s)", reason), message);
     }
 
     /**
@@ -195,6 +177,22 @@ class MessageSender {
         message.setDisconnect(disconnectTag);
 
         sendMessage("disconnect()", message);
+    }
+
+    /**
+     * Sends a "shutdown" message to the communication partner.
+     *
+     * @throws IOException if the send operation fails
+     */
+    void shutdown() throws IOException {
+
+        checkConnection();
+
+        Message message = objectFactory.createMessage();
+        ShutdownTag shutdownTag = objectFactory.createShutdownTag();
+        message.setShutdown(shutdownTag);
+
+        sendMessage("shutdown()", message);
     }
 
     /**
@@ -220,7 +218,7 @@ class MessageSender {
     /**
      * Sends a "queryBuffersByMetainfo" message to the communication partner.
      *
-     * @param topic   a regular expression specifying the buffer topics
+     * @param topic           a regular expression specifying the buffer topics
      * @param metainfoPattern a regular expression for the buffer meta info
      *
      * @throws IOException if the send operation fails
@@ -246,7 +244,7 @@ class MessageSender {
      *
      * @throws IOException if the send operation fails
      */
-    void bufferNames(List<String> names) throws IOException {
+    void bufferNames(Collection<String> names) throws IOException {
 
         checkConnection();
 
@@ -292,128 +290,15 @@ class MessageSender {
         checkConnection();
 
         Message message = objectFactory.createMessage();
+        JAXBInterface jaxb = new JAXBInterface();
         BufferMetainfoTag bufferMetainfoTag = objectFactory.createBufferMetainfoTag();
 
         bufferMetainfoTag.setName(bufferName);
-        metainfoToXML(metainfo, bufferMetainfoTag.getMetainfo());
+        jaxb.metainfoToXML(metainfo, bufferMetainfoTag.getMetainfo());
 
         message.setBufferMetainfo(bufferMetainfoTag);
 
         sendMessage(String.format("bufferMetainfo(%s, %d entries)", bufferName, metainfo.size()), message);
-    }
-
-    /**
-     * Fills all the meta information of a buffer into a list of MetaInfo-Tags.
-     *
-     * @param metainfo the buffer meta information
-     * @param tagList  the list of XML-tags
-     */
-    private void metainfoToXML(Map<String, String> metainfo, List<MetainfoTag> tagList) {
-
-        for (Map.Entry<String, String> entry : metainfo.entrySet()) {
-
-            MetainfoTag metainfoTag = objectFactory.createMetainfoTag();
-
-            metainfoTag.setName(entry.getKey());
-            metainfoTag.setInfo(entry.getValue());
-
-            tagList.add(metainfoTag);
-        }
-    }
-
-    /**
-     * Sends a "bufferConfiguration" message to the communication partner.
-     *
-     * @param configuration the buffer configuration
-     *
-     * @throws IOException if the send operation fails
-     */
-    private BufferConfigurationTag configurationToXML(BufferConfiguration configuration) throws IOException {
-
-        BufferConfigurationTag result = objectFactory.createBufferConfigurationTag();
-
-        result.setKind(configuration.getBufferClass().name());
-
-        // Converting the info about the gatherer.
-        GathererTag gathererTag = objectFactory.createGathererTag();
-        GathererConfiguration gathererConfiguration = configuration.getGatherer();
-
-        switch (gathererConfiguration.kindOfGatherer()) {
-            case DUMMY:
-                gathererTag.setDummy(objectFactory.createDummyGathererTag());
-                break;
-
-            case TEST:
-                gathererTag.setTest(objectFactory.createTestGathererTag());
-                break;
-
-            default:
-                throw new NotYetImplementedError("unknown gatherer class: " + gathererConfiguration.kindOfGatherer());
-        }
-        result.setGatherer(gathererTag);
-
-        // Converting the info about the adapter chain.
-        for (AdapterConfiguration adapter : configuration.getAdapterChain()) {
-
-            AdapterTag adapterTag = objectFactory.createAdapterTag();
-
-            switch (adapter.kindOfAdapter()) {
-                case DUMMY:
-                    adapterTag.setDummy(objectFactory.createDummyAdapterTag());
-                    break;
-
-                case SCALE:
-                    ScalingAdapterConfiguration scalingAdapterConfiguration = (ScalingAdapterConfiguration)adapter;
-                    ScalingAdapterTag scalingAdapterTag = objectFactory.createScalingAdapterTag();
-
-                    scalingAdapterTag.setA(scalingAdapterConfiguration.getA());
-                    scalingAdapterTag.setB(scalingAdapterConfiguration.getB());
-                    scalingAdapterTag.setC(scalingAdapterConfiguration.getC());
-
-                    adapterTag.setScale(scalingAdapterTag);
-                    break;
-
-                case TRIGGER:
-                    TriggeringAdapterConfiguration triggeringAdapterConfiguration = (TriggeringAdapterConfiguration)adapter;
-                    TriggeringAdapterTag triggeringAdapterTag = objectFactory.createTriggeringAdapterTag();
-
-                    triggeringAdapterTag.setLowerThreshold(triggeringAdapterConfiguration.getLowerThreshold());
-                    triggeringAdapterTag.setUpperThreshold(triggeringAdapterConfiguration.getUpperThreshold());
-                    triggeringAdapterTag.setLowerValue(triggeringAdapterConfiguration.getLowerOutput());
-                    triggeringAdapterTag.setUpperValue(triggeringAdapterConfiguration.getUpperOutput());
-
-                    adapterTag.setTrigger(triggeringAdapterTag);
-                    break;
-
-                case LOWPASS:
-                    LowpassAdapterConfiguration lowpassAdapterConfiguration = (LowpassAdapterConfiguration)adapter;
-                    LowpassAdapterTag lowpassAdapterTag = objectFactory.createLowpassAdapterTag();
-
-                    lowpassAdapterTag.setInterpolationFactor(lowpassAdapterConfiguration.getInterpolationFactor());
-
-                    adapterTag.setLowpass(lowpassAdapterTag);
-                    break;
-
-                case FILTER:
-                    FilteringAdapterConfiguration filteringAdapterConfiguration = (FilteringAdapterConfiguration)adapter;
-                    FilteringAdapterTag filteringAdapterTag = objectFactory.createFilteringAdapterTag();
-
-                    filteringAdapterTag.setMinimumDifference(filteringAdapterConfiguration.getMinimumDifference());
-
-                    adapterTag.setFilter(filteringAdapterTag);
-                    break;
-
-                default:
-                    throw new NotYetImplementedError("unknown adapter class: " + adapter.kindOfAdapter());
-            }
-
-            result.getAdapter().add(adapterTag);
-        }
-
-        // Converting the buffer metainfo.
-        metainfoToXML(configuration.getMetainfo(), result.getMetainfo());
-
-        return result;
     }
 
     /**
@@ -428,7 +313,8 @@ class MessageSender {
         checkConnection();
 
         Message message = objectFactory.createMessage();
-        BufferConfigurationTag bufferConfigurationTag = configurationToXML(configuration);
+        JAXBInterface jaxb = new JAXBInterface();
+        BufferConfigurationTag bufferConfigurationTag = jaxb.configurationToXML(configuration);
 
         message.setBufferConfiguration(bufferConfigurationTag);
 
@@ -470,11 +356,12 @@ class MessageSender {
         checkConnection();
 
         Message message = objectFactory.createMessage();
+        JAXBInterface jaxb = new JAXBInterface();
         SetBufferConfigurationTag setBufferConfigurationTag = objectFactory.createSetBufferConfigurationTag();
 
         setBufferConfigurationTag.setName(bufferName);
         setBufferConfigurationTag.setCreate(createAllowed);
-        setBufferConfigurationTag.setBufferConfiguration(configurationToXML(configuration));
+        setBufferConfigurationTag.setBufferConfiguration(jaxb.configurationToXML(configuration));
 
         message.setSetBufferConfiguration(setBufferConfigurationTag);
 
@@ -563,6 +450,20 @@ class MessageSender {
         message.setSet(setTag);
 
         sendMessage(String.format("set(%s, %g)", bufferName, value), message);
+    }
+
+    /**
+     * Sends a "push" message to the communication partner.
+     *
+     * @param value       the buffer value
+     * @param spontaneous is this message spontaneous sent
+     *
+     * @throws IOException if the send operation fails
+     */
+    void push(SimpleData value, boolean spontaneous) throws IOException {
+
+        Double doubleValue = value.getValue() == null ? null : value.getValue().doubleValue();
+        push(value.getBufferName(), value.getState().name(), doubleValue, value.getTimestamp(), spontaneous);
     }
 
     /**

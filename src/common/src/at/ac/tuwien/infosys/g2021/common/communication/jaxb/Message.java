@@ -2,7 +2,7 @@
 // Diese Datei wurde mit der JavaTM Architecture for XML Binding(JAXB) Reference Implementation, v2.2.8-b130911.1802 generiert 
 // Siehe <a href="http://java.sun.com/xml/jaxb">http://java.sun.com/xml/jaxb</a> 
 // �nderungen an dieser Datei gehen bei einer Neukompilierung des Quellschemas verloren. 
-// Generiert: 2015.01.09 um 07:33:28 PM CET 
+// Generiert: 2015.01.12 um 02:27:58 PM CET 
 //
 
 
@@ -28,6 +28,7 @@ import javax.xml.bind.annotation.XmlType;
  *         &lt;element name="accepted" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}AcceptedTag"/>
  *         &lt;element name="rejected" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}RejectedTag"/>
  *         &lt;element name="disconnect" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}DisconnectTag"/>
+ *         &lt;element name="shutdown" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}ShutdownTag"/>
  *         &lt;element name="queryBuffersByName" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}QueryBuffersByNameTag"/>
  *         &lt;element name="queryBuffersByMetainfo" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}QueryBuffersByMetainfoTag"/>
  *         &lt;element name="bufferNames" type="{http://infosys.tu-wien.ac.at/g2021/schemas/communication}BufferNamesTag"/>
@@ -55,6 +56,7 @@ import javax.xml.bind.annotation.XmlType;
         "accepted",
         "rejected",
         "disconnect",
+        "shutdown",
         "queryBuffersByName",
         "queryBuffersByMetainfo",
         "bufferNames",
@@ -76,6 +78,7 @@ public class Message {
     protected AcceptedTag accepted;
     protected RejectedTag rejected;
     protected DisconnectTag disconnect;
+    protected ShutdownTag shutdown;
     protected QueryBuffersByNameTag queryBuffersByName;
     protected QueryBuffersByMetainfoTag queryBuffersByMetainfo;
     protected BufferNamesTag bufferNames;
@@ -184,6 +187,26 @@ public class Message {
      */
     public void setDisconnect(DisconnectTag value) {
         this.disconnect = value;
+    }
+
+    /**
+     * Ruft den Wert der shutdown-Eigenschaft ab.
+     *
+     * @return possible object is
+     * {@link ShutdownTag }
+     */
+    public ShutdownTag getShutdown() {
+        return shutdown;
+    }
+
+    /**
+     * Legt den Wert der shutdown-Eigenschaft fest.
+     *
+     * @param value allowed object is
+     *              {@link ShutdownTag }
+     */
+    public void setShutdown(ShutdownTag value) {
+        this.shutdown = value;
     }
 
     /**

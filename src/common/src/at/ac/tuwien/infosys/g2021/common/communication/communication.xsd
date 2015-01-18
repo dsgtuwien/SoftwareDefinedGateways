@@ -43,6 +43,11 @@ client JVMs containing DataPoint instances.
                 <xs:element name="disconnect" type="DisconnectTag"/>
 
                 <!--
+                The request to stop the buffer daemon.
+                -->
+                <xs:element name="shutdown" type="ShutdownTag"/>
+
+                <!--
                 The request from a client, to query buffer names. This message is used in
                 the process communication query as "Buffer-query" message.
                 -->
@@ -147,6 +152,11 @@ client JVMs containing DataPoint instances.
     The definition of the disconnect tag. This tag does not contain any additional data.
     -->
     <xs:complexType name="DisconnectTag"/>
+
+    <!--
+    The definition of the shutdown tag. This tag does not contain any additional data.
+    -->
+    <xs:complexType name="ShutdownTag"/>
 
     <!--
     The definition of the queryBuffers tag. This tag contains the regular expressions of matching buffer names as attribute.

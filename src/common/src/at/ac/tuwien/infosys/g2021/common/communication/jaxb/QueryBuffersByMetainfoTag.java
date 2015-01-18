@@ -2,8 +2,9 @@
 // Diese Datei wurde mit der JavaTM Architecture for XML Binding(JAXB) Reference Implementation, v2.2.8-b130911.1802 generiert 
 // Siehe <a href="http://java.sun.com/xml/jaxb">http://java.sun.com/xml/jaxb</a> 
 // �nderungen an dieser Datei gehen bei einer Neukompilierung des Quellschemas verloren. 
-// Generiert: 2015.01.09 um 07:33:28 PM CET 
+// Generiert: 2015.01.12 um 02:27:58 PM CET 
 //
+
 
 package at.ac.tuwien.infosys.g2021.common.communication.jaxb;
 
@@ -12,11 +13,12 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlType;
 
+
 /**
  * <p>Java-Klasse f�r QueryBuffersByMetainfoTag complex type.
- * <p>
+ * 
  * <p>Das folgende Schemafragment gibt den erwarteten Content an, der in dieser Klasse enthalten ist.
- * <p>
+ * 
  * <pre>
  * &lt;complexType name="QueryBuffersByMetainfoTag">
  *   &lt;complexContent>
@@ -27,6 +29,8 @@ import javax.xml.bind.annotation.XmlType;
  *   &lt;/complexContent>
  * &lt;/complexType>
  * </pre>
+ *
+ * 
  */
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(name = "QueryBuffersByMetainfoTag")
@@ -40,8 +44,10 @@ public class QueryBuffersByMetainfoTag {
     /**
      * Ruft den Wert der topic-Eigenschaft ab.
      *
-     * @return possible object is
-     * {@link String }
+     * @return
+     *     possible object is
+     *     {@link String }
+     *     
      */
     public String getTopic() {
         return topic;
@@ -50,8 +56,10 @@ public class QueryBuffersByMetainfoTag {
     /**
      * Legt den Wert der topic-Eigenschaft fest.
      *
-     * @param value allowed object is
-     *              {@link String }
+     * @param value
+     *     allowed object is
+     *     {@link String }
+     *     
      */
     public void setTopic(String value) {
         this.topic = value;
@@ -60,8 +68,10 @@ public class QueryBuffersByMetainfoTag {
     /**
      * Ruft den Wert der metainfo-Eigenschaft ab.
      *
-     * @return possible object is
-     * {@link String }
+     * @return
+     *     possible object is
+     *     {@link String }
+     *     
      */
     public String getMetainfo() {
         return metainfo;
@@ -70,8 +80,10 @@ public class QueryBuffersByMetainfoTag {
     /**
      * Legt den Wert der metainfo-Eigenschaft fest.
      *
-     * @param value allowed object is
-     *              {@link String }
+     * @param value
+     *     allowed object is
+     *     {@link String }
+     *     
      */
     public void setMetainfo(String value) {
         this.metainfo = value;

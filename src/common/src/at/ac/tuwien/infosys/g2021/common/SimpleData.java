@@ -14,10 +14,8 @@ public class SimpleData {
     private BufferState state;
     private Number value;
 
-    /**
-     * Instances without data make no sense.
-     */
-    private SimpleData() {}
+    /** Instances without data make no sense. */
+    public SimpleData() { this(null, null, BufferState.RELEASED, null); }
 
     /**
      * Initialisation of the data container.
@@ -29,10 +27,6 @@ public class SimpleData {
      */
     public SimpleData(String b, Date t, BufferState s, Number v) {
 
-        this();
-
-        if (b == null) throw new NullPointerException("buffer name is null");
-        if (t == null) throw new NullPointerException("timestamp is null");
         if (s == null) throw new NullPointerException("buffer state is null");
         if (v == null && s == BufferState.READY) throw new NullPointerException("buffer value is null");
 
@@ -52,6 +46,13 @@ public class SimpleData {
     public SimpleData(String b, Date t, BufferState s) { this(b, t, s, null); }
 
     /**
+     * Is this a dummy value?
+     *
+     * @return <tt>true</tt>, if is is a dummy value
+     */
+    public boolean isDummy() { return buffer == null; }
+
+    /**
      * This method returns the name of the buffer, which this object belongs to.
      *
      * @return the name of the buffer. This name isn't <tt>null</tt>.
@@ -69,8 +70,8 @@ public class SimpleData {
      * This method returns the gathered value of the buffer.
      *
      * @return the gathered value. It is nonnull if the buffer state
-     * is <tt>{@link BufferState#READY}</tt> and
-     * <tt>null</tt> in any other cases.
+     *         is <tt>{@link BufferState#READY}</tt> and
+     *         <tt>null</tt> in any other cases.
      */
     public Number getValue() { return value; }
 

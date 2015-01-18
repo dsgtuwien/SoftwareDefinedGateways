@@ -1,8 +1,6 @@
 package at.ac.tuwien.infosys.g2021.common;
 
-/**
- * This is the base interface of all configurations, describing the implemented adapters.
- */
+/** This is the base interface of all configurations, describing the implemented gatherers. */
 public interface GathererConfiguration {
 
     /**

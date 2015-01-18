@@ -14,8 +14,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /**
  * <p>
@@ -78,7 +81,7 @@ public class DataPoint {
      * of data points and implements all important methods of data points and all methods for receiving
      * value changes from the client endpoint too
      * (interface <tt>{@link at.ac.tuwien.infosys.g2021.common.communication.ValueChangeObserver}</tt>).
-     * <p>
+     * <p/>
      * To prevent useless instances of this class - not regular released objects - there must not exist any
      * hard reference to this class except the only one in the <tt>{@link at.ac.tuwien.infosys.g2021.intf.DataPoint}</tt>
      * class. The <tt>{@link at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint}</tt> class
@@ -92,6 +95,9 @@ public class DataPoint {
 
         // The list of observers.
         private List<DataPointObserver> observers;
+
+        // All the existing streams
+        private WeakHashMap<BlockingQueue<SimpleData>, Object> streams;
 
         // The state of this data point
         private BufferState state;
@@ -107,12 +113,11 @@ public class DataPoint {
             bufferLock = new Object();
             buffers = new HashMap<>();
             observers = new CopyOnWriteArrayList<>();
+            streams = new WeakHashMap<>();
             state = BufferState.INITIALIZING;
         }
 
-        /**
-         * Opens a connection to the daemon und registers this data point.
-         */
+        /** Opens a connection to the daemon und registers this data point. */
         @Override
         protected ClientEndpoint assignClientEndpoint() {
 
@@ -142,9 +147,7 @@ public class DataPoint {
             return connected;
         }
 
-        /**
-         * Release the client endpoint.
-         */
+        /** Release the client endpoint. */
         @Override
         protected void releaseClientEndpoint() {
 
@@ -156,7 +159,7 @@ public class DataPoint {
                 Collection<SimpleData> allBufferStates = buffers.values();
                 Date now = new Date();
 
-                allBufferStates.forEach(oldState -> valueChanged(new SimpleData(oldState.getBufferName(), now, BufferState.FAULTED)));
+                for (SimpleData oldState : allBufferStates) valueChanged(new SimpleData(oldState.getBufferName(), now, BufferState.FAULTED));
             }
         }
 
@@ -169,7 +172,7 @@ public class DataPoint {
         private void fireStateChanged(BufferState oldOne, BufferState newOne) {
 
             logger.info(String.format("The data point #%d changed its state from '%s' to '%s'.", getId(), oldOne.name(), newOne.name()));
-            observers.forEach(observer -> observer.dataPointStateChanged(DataPoint.this, oldOne, newOne));
+            for (DataPointObserver observer : observers) observer.dataPointStateChanged(DataPoint.this, oldOne, newOne);
         }
 
         /**
@@ -179,7 +182,7 @@ public class DataPoint {
          */
         private void fireBufferAssigned(String bufferName) {
 
-            observers.forEach(observer -> observer.bufferAssigned(DataPoint.this, bufferName));
+            for (DataPointObserver observer : observers) observer.bufferAssigned(DataPoint.this, bufferName);
             logger.info(String.format("The buffer '%s' has been assigned to the data point #%d.", bufferName, getId()));
         }
 
@@ -190,7 +193,7 @@ public class DataPoint {
          */
         private void fireBufferDetached(String bufferName) {
 
-            observers.forEach(observer -> observer.bufferDetached(DataPoint.this, bufferName));
+            for (DataPointObserver observer : observers) observer.bufferDetached(DataPoint.this, bufferName);
             logger.info(String.format("The buffer '%s' has been detached from the data point #%d.", bufferName, getId()));
         }
 
@@ -204,7 +207,7 @@ public class DataPoint {
          */
         private void fireBufferChanged(SimpleData oldOne, SimpleData newOne) {
 
-            observers.forEach(observer -> observer.bufferChanged(DataPoint.this, oldOne, newOne));
+            for (DataPointObserver observer : observers) observer.bufferChanged(DataPoint.this, oldOne, newOne);
         }
 
         /**
@@ -215,7 +218,28 @@ public class DataPoint {
         @Override
         void release() {
 
-            buffers.clear();
+            synchronized (bufferLock) {
+                // Detaching all buffers.
+                for (String name : buffers.keySet()) detach(name);
+                buffers.clear();
+
+                // No more value changes are sent to streams
+                for (BlockingQueue<SimpleData> queue : streams.keySet()) {
+                    try {
+                        queue.put(new SimpleData());
+                    }
+                    catch (InterruptedException e) {
+                        // We are shutting down and we delegate the interrupt flag to the caller thread.
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                streams.clear();
+
+                // Now the final state change is done
+                updateState();
+            }
+
+            // No more notification will be sent
             observers.clear();
 
             super.release();
@@ -281,9 +305,7 @@ public class DataPoint {
             }
         }
 
-        /**
-         * Sets the overall state of this data point.
-         */
+        /** Sets the overall state of this data point. */
         private void updateState() { setState(evaluateState()); }
 
         /**
@@ -375,7 +397,10 @@ public class DataPoint {
         void detach(String bufferName) {
 
             synchronized (bufferLock) {
-                if (buffers.remove(bufferName) != null) fireBufferDetached(bufferName);
+                if (buffers.remove(bufferName) != null) {
+                    valueChanged(new SimpleData(bufferName, new Date(), BufferState.RELEASED));
+                    fireBufferDetached(bufferName);
+                }
             }
         }
 
@@ -383,7 +408,7 @@ public class DataPoint {
          * Get the current information about all the buffers attached to this data point.
          *
          * @return a map with the names of all currently attached buffers as key and their values as data. The result may be
-         * empty, but is never <tt>null</tt>.
+         *         empty, but is never <tt>null</tt>.
          */
         Map<String, SimpleData> getAll() {
 
@@ -424,7 +449,7 @@ public class DataPoint {
             }
             else {
                 valueChanged(endpoint.set(bufferName, value));
-                logger.info(String.format("The value of buffer '%s' is set to %f from data point #%d.", bufferName, value.doubleValue(), getId()));
+                logger.info(String.format("The value of buffer '%s' is set to %.3f from data point #%d.", bufferName, value.doubleValue(), getId()));
             }
         }
 
@@ -482,7 +507,20 @@ public class DataPoint {
                         || newValue.getState() == BufferState.READY
                            && !newValue.getValue().equals(oldValue.getValue())) {
 
+                        // Notify the listeners
                         fireBufferChanged(oldValue, newValue);
+
+                        // Queue the new value for the listening streams
+                        for (BlockingQueue<SimpleData> queue : streams.keySet()) {
+                            try {
+                                queue.put(newValue);
+                            }
+                            catch (InterruptedException e) {
+                                // This exception must not be thrown, because this blocking queue has no limit.
+                                // We just set the interrupted flag of the calling thread.
+                                Thread.currentThread().interrupt();
+                            }
+                        }
                     }
 
                     // Is a state change possible?
@@ -491,6 +529,36 @@ public class DataPoint {
                     // Order next change
                     endpoint.getOnChange(newValue.getBufferName());
                 }
+            }
+        }
+
+        /**
+         * Returns a stream of all buffer value changes of this data point.
+         *
+         * @return a stream of value changes
+         */
+        Stream<SimpleData> getStream() {
+
+            // This must be an atomic operation with respect to the buffer values.
+            synchronized (bufferLock) {
+
+                BlockingQueue<SimpleData> queue = new ValueQueue();
+
+                // Put all current buffer values into the queue
+                for (SimpleData value : buffers.values()) {
+                    try {
+                        queue.put(value);
+                    }
+                    catch (InterruptedException e) {
+                        // This exception must not be thrown, because this blocking queue has no limit.
+                        // We just set the interrupted flag of the calling thread.
+                        Thread.currentThread().interrupt();
+                    }
+                }
+
+                // Register this queue for further value changes
+                streams.put(queue, new Object());
+                return queue.stream();
             }
         }
     }
@@ -567,7 +635,7 @@ public class DataPoint {
      * This method looks for available buffers.
      *
      * @param name a regular expression specifying the buffer name, which should be scanned. A simple match satisfy
-     *                the search condition, the regular expression must not match the whole feature description.
+     *             the search condition, the regular expression must not match the whole name.
      *
      * @return a collection of all the buffers matching this query
      */
@@ -603,7 +671,8 @@ public class DataPoint {
      *
      * @return the buffer meta information, which is never <tt>null</tt>
      *
-     * @throws java.lang.IllegalArgumentException if there exists no buffer with the given buffer name
+     * @throws java.lang.IllegalArgumentException
+     *          if there exists no buffer with the given buffer name
      */
     public BufferDescription getBufferDescription(String name) throws IllegalArgumentException { return implementation.getBufferDescription(name); }
 
@@ -613,7 +682,8 @@ public class DataPoint {
      *
      * @param bufferName the name of the buffer
      *
-     * @throws java.lang.IllegalArgumentException if there exists no buffer with the given buffer name
+     * @throws java.lang.IllegalArgumentException
+     *          if there exists no buffer with the given buffer name
      */
     public void assign(String bufferName) throws IllegalArgumentException { implementation.assign(bufferName); }
 
@@ -654,7 +724,8 @@ public class DataPoint {
      *
      * @return the current buffer data
      *
-     * @throws java.lang.IllegalArgumentException there is no buffer with the given buffer name assigned to this data point
+     * @throws java.lang.IllegalArgumentException
+     *          there is no buffer with the given buffer name assigned to this data point
      */
     public SimpleData get(String bufferName) throws IllegalArgumentException {
 
@@ -669,7 +740,7 @@ public class DataPoint {
      * Get the current information about all the buffers attached to this data point.
      *
      * @return a map with the names of all currently attached buffers as key and their values as data. The result may be
-     * empty, but is never <tt>null</tt>.
+     *         empty, but is never <tt>null</tt>.
      */
     public Map<String, SimpleData> getAll() { return implementation.getAll(); }
 
@@ -679,8 +750,10 @@ public class DataPoint {
      * @param bufferName the name of the actor buffer
      * @param value      the new value
      *
-     * @throws java.lang.IllegalArgumentException if the buffer isn't assigned to this data point
-     * @throws java.lang.IllegalStateException    if the buffer isn't an actor or the actor isn't in the state <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#READY}</tt>.
+     * @throws java.lang.IllegalArgumentException
+     *          if the buffer isn't assigned to this data point
+     * @throws java.lang.IllegalStateException
+     *          if the buffer isn't an actor or the actor isn't in the state <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#READY}</tt>.
      */
     public void set(String bufferName, Number value) throws IllegalArgumentException, IllegalStateException {
 
@@ -715,9 +788,19 @@ public class DataPoint {
      * Get an object, which allows time triggered retrieval of buffer data.
      *
      * @return a new instance for time triggered retrieval of buffer data
-     *
-     * TODO
      */
     public TimeControl getTimeControl() { return new TimeControl(this); }
+
+    /**
+     * Returns a stream of all buffer value changes of this data point. After calling this method, all current buffer
+     * values are put into this stream. Then value changes are signalled by putting the new buffer value into the stream.
+     * If there are no buffer value changes available, the calling thread is blocked. Detaching a buffer will cause a value
+     * change to the buffer state <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#RELEASED}</tt>. Releasing this
+     * data point will automatically detach all assigned buffers. No more data changes are signalled with this stream.
+     *
+     * @return a stream of value changes
+     */
+    public Stream<SimpleData> getStream() { return implementation.getStream(); }
 }
+
 

@@ -155,8 +155,8 @@
  *       |                                       |
  *       |                                       |
  *       |&lt;set&gt;                                  |
- *       |--------------------------------------&gt;| At last the GBot sets the value of an unknown buffer.
- *       |                                       | The daemon rejects this message immediately.
+ *       |--------------------------------------&gt;| At last the GBot sets the value of an unknown or an
+ *       |                                       | erroneous buffer. The daemon rejects this message immediately.
  *       |                          &lt;rejected&gt;   |
  *       |&lt;--------------------------------------|
  *       |                                       |

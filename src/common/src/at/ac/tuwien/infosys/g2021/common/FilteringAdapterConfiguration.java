@@ -2,16 +2,14 @@ package at.ac.tuwien.infosys.g2021.common;
 
 /**
  * A filtering adapter suppresses marginal input value changes. The maximum difference between
- * // the last sent output value and the current input value is a configuration item.
+ * the last sent output value and the current input value is a configuration item.
  */
 public class FilteringAdapterConfiguration implements AdapterConfiguration {
 
     // The configuration items
     private double minimumDifference;
 
-    /**
-     * Initialization with the default values.
-     */
+    /** Initialization with the default values. */
     public FilteringAdapterConfiguration() {}
 
     /**

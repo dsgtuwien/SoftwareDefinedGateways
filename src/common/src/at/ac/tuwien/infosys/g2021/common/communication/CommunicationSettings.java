@@ -9,7 +9,7 @@ import java.util.logging.Logger;
  * This class provides all the settings, needed by the communication between
  * DataPoints and the buffer daemon.
  */
-final class CommunicationSettings {
+public final class CommunicationSettings {
 
     /** This is the current protocol version. */
     private final static int VERSION = 1;
@@ -26,10 +26,12 @@ final class CommunicationSettings {
     /** The separator string between messages */
     final static byte[] MESSAGE_SEPARATOR = {'\r', '\n', '<', '>', '\r', '\n'};
 
-    /**
-     * This is the logger.
-     */
+    /** This is the logger. */
     private static final Logger LOGGER = Loggers.getLogger(CommunicationSettings.class);
+
+    // Daemons host and port.
+    private static InetAddress daemonHost = null;
+    private static int daemonPort = -1;
 
     /**
      * Returns the current protocol version.
@@ -43,30 +45,32 @@ final class CommunicationSettings {
      *
      * @return the server address
      */
-    static InetAddress bufferDaemonAddress() {
+    public static InetAddress bufferDaemonAddress() {
 
-        String hostName = null;
-        InetAddress result = null;
+        if (daemonHost == null) {
 
-        // Checking for an explicit host address.
-        String property = System.getProperty("at.ac.tuwien.infosys.g2021.daemon.address");
-        if (property != null) hostName = property;
+            String hostName = null;
 
-        // Resolving the internet address.
-        if (hostName != null) {
-            try {
-                result = InetAddress.getByName(hostName);
+            // Checking for an explicit host address.
+            String property = System.getProperty("at.ac.tuwien.infosys.g2021.daemon.address");
+            if (property != null) hostName = property;
+
+            // Resolving the internet address.
+            if (hostName != null) {
+                try {
+                    daemonHost = InetAddress.getByName(hostName);
+                }
+                catch (UnknownHostException e) {
+                    LOGGER.warning(String.format("The host '%s' is not known. The local host address will be used.", hostName));
+                }
             }
-            catch (UnknownHostException e) {
-                LOGGER.warning(String.format("The host '%s' is not known. The local host address will be used.", hostName));
-            }
+
+            // Using the local host loopback address as default
+            if (daemonHost == null) daemonHost = InetAddress.getLoopbackAddress();
+
+            LOGGER.config(String.format("The address '%s' is used as server address.", daemonHost.toString()));
         }
-
-        // Using the local host loopback address as default
-        if (result == null) result = InetAddress.getLoopbackAddress();
-
-        LOGGER.config(String.format("The address '%s' is used as server address.", result.toString()));
-        return result;
+        return daemonHost;
     }
 
     /**
@@ -74,33 +78,35 @@ final class CommunicationSettings {
      *
      * @return the server port
      */
-    static int bufferDaemonPort() {
+    public static int bufferDaemonPort() {
 
-        int result = DAEMON_DEFAULT_PORT;
+        if (daemonPort < 0) {
 
-        // Checking for an explicit port number.
-        String property = System.getProperty("at.ac.tuwien.infosys.g2021.daemon.port");
-        if (property != null) {
-            try {
-                result = Integer.parseInt(property);
+            daemonPort = DAEMON_DEFAULT_PORT;
+
+            // Checking for an explicit port number.
+            String property = System.getProperty("at.ac.tuwien.infosys.g2021.daemon.port");
+            if (property != null) {
+                try {
+                    daemonPort = Integer.parseInt(property);
+                }
+                catch (NumberFormatException nfe) {
+                    LOGGER.warning(String.format("'%s' is not a valid port number. The default port %d will be used.", property, DAEMON_DEFAULT_PORT));
+                }
             }
-            catch (NumberFormatException nfe) {
-                LOGGER.warning(String.format("'%s' is not a valid port number. The default port %d will be used.", property, DAEMON_DEFAULT_PORT));
+
+            // Checking for an valid port number.
+            if (daemonPort < 0 || daemonPort > 65535) {
+                LOGGER.warning(String.format("'%d' is not a valid port number. The default port %d will be used.", daemonPort, DAEMON_DEFAULT_PORT));
+                daemonPort = DAEMON_DEFAULT_PORT;
             }
+
+            LOGGER.config(String.format("The port '%d' is used as server port.", daemonPort));
         }
 
-        // Checking for an valid port number.
-        if (result < 0 || result > 65535) {
-            LOGGER.warning(String.format("'%d' is not a valid port number. The default port %d will be used.", result, DAEMON_DEFAULT_PORT));
-            result = DAEMON_DEFAULT_PORT;
-        }
-
-        LOGGER.config(String.format("The port '%d' is used as server port.", result));
-        return result;
+        return daemonPort;
     }
 
-    /**
-     * Instances of this class are not allowed.
-     */
+    /** Instances of this class are not allowed. */
     private CommunicationSettings() {}
 }

@@ -34,16 +34,17 @@ class Connection {
 
     // The socket of the connection
     private Socket socket;
+    private final Object senderLock;
 
     // Every connection has an id for logging reasons
     private int id;
     private static int nextId = 1;
     private final static Object idLock = new Object();
 
-    /**
-     * A connection without a socket is not wise.
-     */
+    /** A connection without a socket is not wise. */
     private Connection() {
+
+        senderLock = new Object();
 
         // Evaluating the id
         synchronized (idLock) {
@@ -74,7 +75,7 @@ class Connection {
      */
     Connection(Socket s) throws IOException {
 
-        super();
+        this();
         socket = s;
 
         if (!isConnected()) throw new IOException("the socket is not connected");
@@ -158,9 +159,11 @@ class Connection {
 
             // And write the whole byte array to the socket output stream
             try {
-                socket.getOutputStream().write(stream.toByteArray());
-                socket.getOutputStream().flush();
-                logger.finer("A XML message has been sent over the connection #" + id + ".");
+                synchronized (senderLock) {
+                    socket.getOutputStream().write(stream.toByteArray());
+                    socket.getOutputStream().flush();
+                    logger.finer("A XML message has been sent over the connection #" + id + ".");
+                }
             }
             catch (Exception e) {
                 logger.log(Level.WARNING, "Cannot write to the connection #" + id + ":", e);
@@ -201,8 +204,8 @@ class Connection {
 
                     // Append the bytes read to the message bytes.
                     byte[] newMessageBytes = new byte[messageBytes.length + bufferLength];
-                    System.arraycopy(newMessageBytes, 0, messageBytes, 0, messageBytes.length);
-                    System.arraycopy(newMessageBytes, messageBytes.length, buffer, 0, bufferLength);
+                    System.arraycopy(messageBytes, 0, newMessageBytes, 0, messageBytes.length);
+                    System.arraycopy(buffer, 0, newMessageBytes, messageBytes.length, bufferLength);
                     messageBytes = newMessageBytes;
                 }
 
@@ -210,14 +213,14 @@ class Connection {
                 if (messageBytes.length >= CommunicationSettings.MESSAGE_SEPARATOR.length) {
 
                     byte[] suffix = new byte[CommunicationSettings.MESSAGE_SEPARATOR.length];
-                    System.arraycopy(suffix, 0, messageBytes, messageBytes.length - suffix.length, suffix.length);
+                    System.arraycopy(messageBytes, messageBytes.length - suffix.length, suffix, 0, suffix.length);
 
                     if (Arrays.equals(suffix, CommunicationSettings.MESSAGE_SEPARATOR)) {
 
                         // Fine, the whole message has been received. Now the separator is thrown away and the we leave
                         // the read loop by setting the buffer length to 0.
                         byte[] newMessageBytes = new byte[messageBytes.length - CommunicationSettings.MESSAGE_SEPARATOR.length];
-                        System.arraycopy(newMessageBytes, 0, messageBytes, 0, newMessageBytes.length);
+                        System.arraycopy(messageBytes, 0, newMessageBytes, 0, newMessageBytes.length);
                         messageBytes = newMessageBytes;
                         bufferLength = 0;
                     }

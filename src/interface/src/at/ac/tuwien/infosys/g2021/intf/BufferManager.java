@@ -105,7 +105,7 @@ public class BufferManager {
         // Initializing the implementation
         implementation = new Implementation();
 
-        logger.info("The buffer manager #" + getId() + "has been created.");
+        logger.info("The buffer manager #" + getId() + " has been created.");
     }
 
     /**

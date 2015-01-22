@@ -48,8 +48,7 @@ class TriggeringAdapter extends Adapter {
                 // the upper output value is only set, if the input value is greater than the upper threshold.
                 // In every cases an input value change is done.
                 if (current.getState() != BufferState.READY) {
-                    set(new SimpleData(current.getBufferName(),
-                                       newValue.getTimestamp(),
+                    set(new SimpleData(newValue.getTimestamp(),
                                        BufferState.READY,
                                        in >= upperThreshold ? config.getUpperOutput() : config.getLowerOutput()));
                 }
@@ -57,8 +56,7 @@ class TriggeringAdapter extends Adapter {
                 // If the input is greater then the upper threshold, the output value is the upper value.
                 // This may cause a value change sent to the consumers.
                 else if (in >= upperThreshold) {
-                    set(new SimpleData(current.getBufferName(),
-                                       newValue.getTimestamp(),
+                    set(new SimpleData(newValue.getTimestamp(),
                                        BufferState.READY,
                                        config.getUpperOutput()));
                 }
@@ -66,8 +64,7 @@ class TriggeringAdapter extends Adapter {
                 // If the input is less then the lower threshold, the output value is the lower value.
                 // This may cause a value change sent to the consumers.
                 else if (in <= lowerThreshold) {
-                    set(new SimpleData(current.getBufferName(),
-                                       newValue.getTimestamp(),
+                    set(new SimpleData(newValue.getTimestamp(),
                                        BufferState.READY,
                                        config.getLowerOutput()));
                 }

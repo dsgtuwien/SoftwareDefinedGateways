@@ -70,7 +70,7 @@ class AdapterChain extends Adapter {
 
         // Now we install the producer - consumer dependencies
         for (int i = 1; i < adapters.size(); i++) adapters.get(i - 1).addValueChangeConsumer(adapters.get(i));
-        addValueChangeConsumer(adapters.get(adapters.size() - 1));
+        adapters.get(adapters.size() - 1).addValueChangeConsumer(this);
     }
 
     /**
@@ -95,12 +95,14 @@ class AdapterChain extends Adapter {
     void put(SimpleData value) {
 
         synchronized (valueLock) {
-            if (adapters.size() >= 1) adapters.get(0).valueChanged(value);
+            adapters.get(0).valueChanged(value);
         }
     }
 
     /**
-     * This is the notification of a spontaneous value change.
+     * This is the notification of a spontaneous value change of the
+     * last adapter in the chain. This value becomes the current value
+     * of the whole chain.
      *
      * @param newValue the new buffer value
      */

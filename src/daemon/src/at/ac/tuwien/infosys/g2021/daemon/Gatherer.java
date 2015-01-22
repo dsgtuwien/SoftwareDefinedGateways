@@ -3,13 +3,18 @@ package at.ac.tuwien.infosys.g2021.daemon;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.GathererConfiguration;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
+import at.ac.tuwien.infosys.g2021.common.util.Loggers;
 import java.util.Date;
+import java.util.logging.Logger;
 
 /**
  * A gatherer represents a single value of a hardware interface. This may be an actor or a sensor. Gatherers are identified
  * by a gatherer configuration. For a single hardware value, there exists only a single gatherer.
  */
 abstract class Gatherer extends ValueChangeProducer {
+
+    // The logger.
+    private final static Logger logger = Loggers.getLogger(Gatherer.class);
 
     // The used gatherer configuration
     private GathererConfiguration configuration;
@@ -73,8 +78,10 @@ abstract class Gatherer extends ValueChangeProducer {
     protected void setCurrentValue(Number value) {
 
         synchronized (valueLock) {
-            if (currentValue.getState() != BufferState.READY || !currentValue.getValue().equals(value)) {
-                currentValue = new SimpleData("???", new Date(), BufferState.READY, value);
+            if (currentValue == null || currentValue.getState() != BufferState.READY || !currentValue.getValue().equals(value)) {
+                currentValue = new SimpleData(new Date(), BufferState.READY, value);
+                logger.fine(String.format("An instance of '%s' distributes the new value %.3f.",
+                                          getClass().getSimpleName(), value.doubleValue()));
                 fireValueChange(currentValue);
             }
         }
@@ -88,8 +95,10 @@ abstract class Gatherer extends ValueChangeProducer {
     protected void setCurrentState(BufferState state) {
 
         synchronized (valueLock) {
-            if (currentValue.getState() != state) {
-                currentValue = new SimpleData("???", new Date(), state);
+            if (currentValue == null || currentValue.getState() != state) {
+                currentValue = new SimpleData(new Date(), state);
+                logger.fine(String.format("An instance of '%s' distributes the new state %s.",
+                                          getClass().getSimpleName(), state.name()));
                 fireValueChange(currentValue);
             }
         }

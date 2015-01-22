@@ -7,9 +7,7 @@ package at.ac.tuwien.infosys.g2021.common;
  */
 public enum BufferState {
 
-    /**
-     * This is state immediately after the creation of the object. Internal initialization is in progress.
-     */
+    /** This is state immediately after the creation of the object. Internal initialization is in progress. */
     INITIALIZING,
 
     /**
@@ -26,10 +24,11 @@ public enum BufferState {
      */
     FAULTED,
 
-    /**
-     * The object has been released and all the system resources has been closed. A <tt>DataPoint</tt> also encounters this state,
-     * if the connection to the buffer daemon is broken.
-     */
-    RELEASED
+    /** The object has been released and all the system resources has been closed. */
+    RELEASED,
+
+    /** The connection to the buffer daemon is broken. */
+    ISOLATED
 }
+
 

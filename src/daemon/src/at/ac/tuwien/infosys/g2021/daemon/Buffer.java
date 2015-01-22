@@ -4,9 +4,11 @@ import at.ac.tuwien.infosys.g2021.common.BufferClass;
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
+import at.ac.tuwien.infosys.g2021.common.util.Loggers;
 import at.ac.tuwien.infosys.g2021.common.util.NotYetImplementedError;
 import java.util.Date;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * A buffer contains the current value of single a gatherer converted meaningful value and the
@@ -17,6 +19,9 @@ import java.util.Map;
  * adapters and then put into the gatherer.
  */
 class Buffer extends ValueChangeProducer {
+
+    // The logger.
+    private final static Logger logger = Loggers.getLogger(Buffer.class);
 
     // This inner class listens for value changes of the gatherer
     private class GathererListener implements ValueChangeConsumer {
@@ -134,7 +139,7 @@ class Buffer extends ValueChangeProducer {
             }
 
             // Now the buffer is released
-            fireValueChange(new SimpleData(name, new Date(), BufferState.RELEASED));
+            setValue(new SimpleData(name, new Date(), BufferState.RELEASED));
             super.shutdown();
         }
     }
@@ -150,7 +155,7 @@ class Buffer extends ValueChangeProducer {
 
         synchronized (lock) {
             if (configuration.getBufferClass() == BufferClass.SENSOR) {
-                setValue(newValue);
+                setValue(new SimpleData(name, newValue));
             }
             else if (configuration.getBufferClass() == BufferClass.ACTOR && gatherer != null) {
                 if (!gatherer.set(newValue.getValue())) takeStateFromGatherer(BufferState.FAULTED);
@@ -170,10 +175,16 @@ class Buffer extends ValueChangeProducer {
         synchronized (lock) {
             if (gatherer != null) {
                 if (configuration.getBufferClass() == BufferClass.SENSOR && adapters != null) {
-                    adapters.put(gatherer.get());
+
+                    SimpleData gathererValue = gatherer.get();
+
+                    adapters.put(new SimpleData(getName(), gathererValue));
                 }
-                else if (configuration.getBufferClass() == BufferClass.ACTOR && newValue.getState() != BufferState.READY) {
-                    takeStateFromGatherer(BufferState.FAULTED);
+                else if (configuration.getBufferClass() == BufferClass.ACTOR) {
+                    if (newValue.getState() != BufferState.READY) {
+                        takeStateFromGatherer(BufferState.FAULTED);
+                        adapters.put(get());
+                    }
                 }
             }
         }
@@ -224,11 +235,15 @@ class Buffer extends ValueChangeProducer {
     private void setValue(SimpleData newValue) {
 
         synchronized (lock) {
-            if (currentValue == null
-                || currentValue.getState() != newValue.getState()
-                || newValue.getState() == BufferState.READY && !newValue.getValue().equals(currentValue.getValue())) {
+            if (currentValue == null || !currentValue.equals(newValue)) {
 
                 currentValue = newValue;
+                if (currentValue.getValue() == null) {
+                    logger.info(String.format("The buffer '%s' distributes the new state %s.", name, currentValue.getState().name()));
+                }
+                else {
+                    logger.info(String.format("The buffer '%s' distributes the new value %.3f.", name, currentValue.getValue().doubleValue()));
+                }
                 fireValueChange(currentValue);
             }
         }

@@ -94,7 +94,7 @@ public class LoggingGBot extends Thread {
             // At first we need a DataPoint instance.
             DataPoint dataPoint = new DataPoint();
 
-            if (dataPoint.getState() != BufferState.RELEASED) {
+            if (dataPoint.getState() != BufferState.ISOLATED) {
 
                 // Changes on the data point will be logged with our observer
                 dataPoint.addDataPointObserver(new LoggingObserver());

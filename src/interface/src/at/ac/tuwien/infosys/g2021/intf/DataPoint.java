@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -125,22 +126,26 @@ public class DataPoint {
 
             // After reinstallation of a connection, all known buffers must be updated
             if (connected != null) {
+                if (buffers != null) {
 
-                Collection<String> allBufferNames = new ArrayList<>();
+                    Collection<String> allBufferNames = new ArrayList<>();
 
-                synchronized (bufferLock) {
-                    allBufferNames.addAll(buffers.keySet());
-                }
-
-                for (String bufferName : allBufferNames) {
-                    try {
-                        valueChanged(connected.getImmediate(bufferName));
+                    synchronized (bufferLock) {
+                        allBufferNames.addAll(buffers.keySet());
                     }
-                    catch (IllegalArgumentException e) {
 
-                        // This buffer has been removed!
-                        valueChanged(new SimpleData(bufferName, new Date(), BufferState.RELEASED));
+                    for (String bufferName : allBufferNames) {
+                        try {
+                            valueChanged(connected.getImmediate(bufferName));
+                        }
+                        catch (IllegalArgumentException e) {
+
+                            // This buffer has been removed!
+                            valueChanged(new SimpleData(bufferName, new Date(), BufferState.RELEASED));
+                        }
                     }
+
+                    updateState();
                 }
             }
 
@@ -219,8 +224,9 @@ public class DataPoint {
         void release() {
 
             synchronized (bufferLock) {
+
                 // Detaching all buffers.
-                for (String name : buffers.keySet()) detach(name);
+                for (String name : new HashSet<>(buffers.keySet())) detach(name);
                 buffers.clear();
 
                 // No more value changes are sent to streams
@@ -234,10 +240,10 @@ public class DataPoint {
                     }
                 }
                 streams.clear();
-
-                // Now the final state change is done
-                updateState();
             }
+
+            // Now the final state change is done
+            setState(BufferState.RELEASED);
 
             // No more notification will be sent
             observers.clear();
@@ -252,28 +258,26 @@ public class DataPoint {
          */
         private BufferState evaluateState() {
 
-            // No communication possible
-            if (getClientEndpoint() == null) return BufferState.RELEASED;
-
-            // No buffers assigned
-            synchronized (bufferLock) {
-                if (buffers.size() == 0) return BufferState.INITIALIZING;
-            }
-
             // Evaluating the states of all assigned buffers
             boolean faulted = false;
             boolean initializing = false;
 
-            for (SimpleData data : buffers.values()) {
-                switch (data.getState()) {
-                    case FAULTED:
-                    case RELEASED:
-                        faulted = true;
-                        break;
+            synchronized (bufferLock) {
 
-                    case INITIALIZING:
-                        initializing = true;
-                        break;
+                // No buffers assigned
+                if (buffers.size() == 0) return BufferState.INITIALIZING;
+
+                for (SimpleData data : buffers.values()) {
+                    switch (data.getState()) {
+                        case FAULTED:
+                        case RELEASED:
+                            faulted = true;
+                            break;
+
+                        case INITIALIZING:
+                            initializing = true;
+                            break;
+                    }
                 }
             }
 
@@ -313,6 +317,7 @@ public class DataPoint {
          * of the assigned buffers in such way:
          * <ul>
          * <li>After calling the method <tt>{@link #release()}</tt>, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#RELEASED}</tt>.</li>
+         * <li>If the buffer daemon isn't reachable, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#ISOLATED}</tt>.</li>
          * <li>If no buffer is assigned, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#INITIALIZING}</tt>.</li>
          * <li>If an assigned buffer is in <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#FAULTED}</tt> state, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#FAULTED}</tt>.</li>
          * <li>If an assigned buffer is in <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#RELEASED}</tt> state, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#FAULTED}</tt>.</li>
@@ -346,23 +351,24 @@ public class DataPoint {
                 // At first we try insert the buffer into the set of wellknown buffers.
                 synchronized (bufferLock) {
                     if (!buffers.containsKey(bufferName)) {
-                        initialValue = new SimpleData(bufferName, new Date(), BufferState.INITIALIZING);
+                        initialValue = new SimpleData();
                         buffers.put(bufferName, initialValue);
                     }
                 }
 
                 // If the buffer was unknown, we must evaluate the buffer value
-                if (initialValue == null) {
+                if (initialValue != null && initialValue.isDummy()) {
                     try {
                         initialValue = endpoint.getImmediate(bufferName);
 
                         // Ok, the buffer is assigned now
                         fireBufferAssigned(bufferName);
                         valueChanged(initialValue);
+                        updateState();
                     }
                     catch (IllegalArgumentException e) {
 
-                        // This is an unknown buffer, we remove it now
+                        // In the meantime, the buffer was removed with the buffer manager. We remove it now.
                         synchronized (bufferLock) {
                             buffers.remove(bufferName);
                         }
@@ -397,9 +403,11 @@ public class DataPoint {
         void detach(String bufferName) {
 
             synchronized (bufferLock) {
-                if (buffers.remove(bufferName) != null) {
+                if (buffers.get(bufferName) != null) {
                     valueChanged(new SimpleData(bufferName, new Date(), BufferState.RELEASED));
+                    buffers.remove(bufferName);
                     fireBufferDetached(bufferName);
+                    updateState();
                 }
             }
         }
@@ -441,15 +449,19 @@ public class DataPoint {
             else if (currentValue == null) {
                 throw new IllegalArgumentException("unknown buffer '" + bufferName + "'");
             }
-            else if (currentValue.getState() != BufferState.READY) {
-                throw new IllegalStateException("buffer '" + bufferName + "' is in wrong state: " + currentValue.getState().name());
-            }
             else if (endpoint == null) {
                 throw new IllegalStateException("buffer '" + bufferName + "' is in wrong state: " + BufferState.FAULTED.name());
             }
             else {
-                valueChanged(endpoint.set(bufferName, value));
-                logger.info(String.format("The value of buffer '%s' is set to %.3f from data point #%d.", bufferName, value.doubleValue(), getId()));
+                currentValue = endpoint.set(bufferName, value);
+                if (currentValue.getState() == BufferState.READY) {
+                    valueChanged(currentValue);
+                    logger.info(String.format("The value of buffer '%s' is set to %.3f from data point #%d.", bufferName, value.doubleValue(), getId()));
+                    updateState();
+                }
+                else {
+                    throw new IllegalStateException("unable to change faulted buffer 'bufferName'");
+                }
             }
         }
 
@@ -484,6 +496,14 @@ public class DataPoint {
             observers.remove(observer);
         }
 
+        /** This is the notification about the lost connection to the daemon. */
+        @Override
+        public void communicationLost() {
+
+            super.communicationLost();
+            if (state != BufferState.RELEASED) setState(BufferState.ISOLATED);
+        }
+
         /**
          * This is the notification of a spontaneous value change.
          *
@@ -503,9 +523,7 @@ public class DataPoint {
                     buffers.put(newValue.getBufferName(), newValue);
 
                     // Is the buffer changed?
-                    if (oldValue.getState() != newValue.getState()
-                        || newValue.getState() == BufferState.READY
-                           && !newValue.getValue().equals(oldValue.getValue())) {
+                    if (!oldValue.equals(newValue)) {
 
                         // Notify the listeners
                         fireBufferChanged(oldValue, newValue);
@@ -523,11 +541,8 @@ public class DataPoint {
                         }
                     }
 
-                    // Is a state change possible?
-                    if (oldValue.getState() != newValue.getState()) updateState();
-
                     // Order next change
-                    endpoint.getOnChange(newValue.getBufferName());
+                    if (newValue.getState() != BufferState.RELEASED) endpoint.getOnChange(newValue.getBufferName());
                 }
             }
         }
@@ -620,6 +635,7 @@ public class DataPoint {
      * of the assigned buffers in such way:
      * <ul>
      * <li>After calling the method <tt>{@link #release()}</tt>, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#RELEASED}</tt>.</li>
+     * <li>If the connection to the buffer daemon is broken, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#ISOLATED}</tt>.</li>
      * <li>If no buffer is assigned, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#INITIALIZING}</tt>.</li>
      * <li>If an assigned buffer is in <tt>{@link BufferState#FAULTED}</tt> state, the state is <tt>{@link BufferState#FAULTED}</tt>.</li>
      * <li>If an assigned buffer is in <tt>{@link BufferState#RELEASED}</tt> state, the state is <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#FAULTED}</tt>.</li>
@@ -718,7 +734,9 @@ public class DataPoint {
     public void detach(String bufferName) { implementation.detach(bufferName); }
 
     /**
-     * Get the current information about a buffer attached to this data point.
+     * Get the current information about a buffer attached to this data point. Sensor buffers return the
+     * value read from the hardware. Actors return the last value set to the buffer. For convenience actor
+     * buffers return an error state, if the hardware is or was in this state and no value was set.
      *
      * @param bufferName the name of the buffer
      *

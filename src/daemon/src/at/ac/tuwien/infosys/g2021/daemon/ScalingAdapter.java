@@ -37,8 +37,7 @@ class ScalingAdapter extends Adapter {
                 SimpleData current = get();
                 double in = newValue.getValue().doubleValue();
 
-                set(new SimpleData(current.getBufferName(),
-                                   newValue.getTimestamp(),
+                set(new SimpleData(newValue.getTimestamp(),
                                    BufferState.READY,
                                    in * in * config.getA() + in * config.getB() + config.getC()));
             }

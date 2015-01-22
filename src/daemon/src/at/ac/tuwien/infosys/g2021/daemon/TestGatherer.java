@@ -29,7 +29,6 @@ class TestGatherer extends Gatherer {
     TestGatherer(TestGathererConfiguration config) {
 
         super(config);
-        setCurrentState(BufferState.READY);
         setCurrentValue(0.0);
 
         updater = new Updater();
@@ -65,8 +64,8 @@ class TestGatherer extends Gatherer {
 
                 double value = get().getValue().doubleValue();
 
-                if (value <= 0.9) setCurrentValue(value + 0.1);
-                else setCurrentValue(value - 0.9);
+                if (value < 0.9999999999) setCurrentValue(value + 0.1);
+                else setCurrentValue(value - 1.0);
             }
         }
     }

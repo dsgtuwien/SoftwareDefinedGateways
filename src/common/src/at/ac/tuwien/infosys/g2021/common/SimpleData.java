@@ -15,7 +15,41 @@ public class SimpleData {
     private Number value;
 
     /** Instances without data make no sense. */
-    public SimpleData() { this(null, null, BufferState.RELEASED, null); }
+    public SimpleData() { this(null, null, null, null); }
+
+    /**
+     * Initialisation of the data container.
+     *
+     * @param t a timestamp
+     * @param s the buffer state
+     */
+    public SimpleData(Date t, BufferState s) { this("???", t, s, null); }
+
+    /**
+     * Initialisation of the data container.
+     *
+     * @param b the buffer name
+     * @param t a timestamp
+     * @param s the buffer state
+     */
+    public SimpleData(String b, Date t, BufferState s) { this(b, t, s, null); }
+
+    /**
+     * Initialisation of the data container.
+     *
+     * @param t a timestamp
+     * @param s the buffer state
+     * @param v the buffer value
+     */
+    public SimpleData(Date t, BufferState s, Number v) { this("???", t, s, v); }
+
+    /**
+     * Initialisation of the data container.
+     *
+     * @param b the buffer name
+     * @param d the buffer data as SimpleData object
+     */
+    public SimpleData(String b, SimpleData d) { this(b, d.timestamp, d.state, d.value); }
 
     /**
      * Initialisation of the data container.
@@ -27,7 +61,6 @@ public class SimpleData {
      */
     public SimpleData(String b, Date t, BufferState s, Number v) {
 
-        if (s == null) throw new NullPointerException("buffer state is null");
         if (v == null && s == BufferState.READY) throw new NullPointerException("buffer value is null");
 
         buffer = b;
@@ -37,13 +70,51 @@ public class SimpleData {
     }
 
     /**
-     * Initialisation of the data container.
+     * Indicates whether some other object is "equal to" this one.
      *
-     * @param b the buffer name
-     * @param t a timestamp
-     * @param s the buffer state
+     * @param obj the reference object with which to compare.
+     *
+     * @return {@code true} if this object is the same as the obj
+     *         argument; {@code false} otherwise.
      */
-    public SimpleData(String b, Date t, BufferState s) { this(b, t, s, null); }
+    @Override
+    public boolean equals(Object obj) {
+
+        try {
+            SimpleData other = (SimpleData)obj;
+
+            return state == other.getState()
+                   && (value == null && other.getValue() == null
+                       || value != null && Math.abs(value.doubleValue() - other.getValue().doubleValue()) < 1.0e-8);
+        }
+        catch (ClassCastException | NullPointerException e) {
+            // This exceptions mean, that the other object reference is null
+            // or not an instance of this class.
+            return false;
+        }
+    }
+
+    /**
+     * Returns a hash code value for the object.
+     *
+     * @return a hash code value for this object.
+     */
+    @Override
+    public int hashCode() {
+
+        return state.hashCode() ^ (value == null ? -42 : value.hashCode()) << 3;
+    }
+
+    /**
+     * Returns a string representation of the object.
+     *
+     * @return a string representation of the object.
+     */
+    @Override
+    public String toString() {
+
+        return String.format("%s: '%s': %s (%s)", super.toString(), buffer, value == null ? "null" : value.toString(), state.name());
+    }
 
     /**
      * Is this a dummy value?
@@ -58,6 +129,13 @@ public class SimpleData {
      * @return the name of the buffer. This name isn't <tt>null</tt>.
      */
     public String getBufferName() { return buffer; }
+
+    /**
+     * This method Sets the name of the buffer, which this object belongs to.
+     *
+     * @param name the name of the buffer. This name isn't <tt>null</tt>.
+     */
+    public void setBufferName(String name) { buffer = name; }
 
     /**
      * This method returns state of the buffer.

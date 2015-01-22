@@ -164,7 +164,8 @@ public class Daemon {
             SimpleData result = null;
 
             if (buffer != null) {
-                if (buffer.put(value)) result = buffer.get();
+                buffer.put(value);
+                result = buffer.get();
             }
 
             return result;
@@ -258,6 +259,10 @@ public class Daemon {
     private ServerSocket socket;
     private ConnectionListener connectionListener;
 
+    // Some test flags set by command line options
+    private boolean exitOnShutdown;
+    private boolean openSocket;
+
     /** Initialization of the instance variables. */
     private Daemon() {
 
@@ -270,6 +275,9 @@ public class Daemon {
      * @param args the arguments from the command line
      */
     private void initialize(String[] args) {
+
+        exitOnShutdown = true;
+        openSocket = true;
 
         // At first the command line arguments are evaluated and handled.
         handleCommandLineArguments(args);
@@ -299,21 +307,23 @@ public class Daemon {
         buffers.addValueChangeConsumer(new ValueChangeListener());
 
         // At last the server socket is initialized
-        try {
-            socket = new ServerSocket(CommunicationSettings.bufferDaemonPort());
-            socket.setReuseAddress(true);
-            connectionListener = new ConnectionListener();
-            connectionListener.start();
-            logger.info(String.format("The G2021 buffer daemon listen for incoming connections at port %d.",
-                                      CommunicationSettings.bufferDaemonPort()));
-        }
-        catch (IOException e) {
-            logger.log(Level.SEVERE,
-                       String.format("The G2021 buffer daemon cannot listen for incoming connections " +
-                                     "at port %d. An emergency shutdown is initiated.",
-                                     CommunicationSettings.bufferDaemonPort()),
-                       e);
-            kill();
+        if (openSocket) {
+            try {
+                socket = new ServerSocket(CommunicationSettings.bufferDaemonPort());
+                socket.setReuseAddress(true);
+                connectionListener = new ConnectionListener();
+                connectionListener.start();
+                logger.info(String.format("The G2021 buffer daemon listen for incoming connections at port %d.",
+                                          CommunicationSettings.bufferDaemonPort()));
+            }
+            catch (IOException e) {
+                logger.log(Level.SEVERE,
+                           String.format("The G2021 buffer daemon cannot listen for incoming connections " +
+                                         "at port %d. An emergency shutdown is initiated.",
+                                         CommunicationSettings.bufferDaemonPort()),
+                           e);
+                kill();
+            }
         }
 
         logger.info("The G2021 buffer daemon is now up and running.");
@@ -369,18 +379,24 @@ public class Daemon {
 
         // Now release the system resources
         buffers.release();
+        buffers = null;
         gatherers.release();
+        gatherers = null;
 
         // Now the timer thread is stopped
         timer.cancel();
+        timer = null;
         logger.info("All system resources has been released.");
 
-        // Say good bye
-        logger.info(String.format("Exiting the operation system process with exit code %d.", exitCode));
-        LogManager.getLogManager().reset();
-
         // And finally exit the process
-        System.exit(exitCode);
+        if (exitOnShutdown) {
+            logger.info(String.format("Exiting the operation system process with exit code %d.", exitCode));
+            LogManager.getLogManager().reset();
+            System.exit(exitCode);
+        }
+        else {
+            logger.info(String.format("The shutdown sequence is done."));
+        }
     }
 
     /** Stops the daemon. This is a request for a regular shutdown. */
@@ -445,6 +461,14 @@ public class Daemon {
                 case "-stop":
                     if (shutdownRemoteDaemon()) System.exit(0);
                     else System.exit(1);
+                    break;
+
+                case "-<unit-test>: don-t-exit-on-shutdown":
+                    exitOnShutdown = false;
+                    break;
+
+                case "-<unit-test>: don-t-open-socket":
+                    openSocket = false;
                     break;
 
                 default:

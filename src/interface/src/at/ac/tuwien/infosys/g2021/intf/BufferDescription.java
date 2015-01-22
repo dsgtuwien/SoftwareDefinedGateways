@@ -3,18 +3,14 @@ package at.ac.tuwien.infosys.g2021.intf;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * A buffer description shows the meta information assigned to a buffer.
- */
+/** A buffer description shows the meta information assigned to a buffer. */
 public class BufferDescription {
 
     // The data
     private String bufferName;
     private Map<String, String> metaData;
 
-    /**
-     * No instance creation without data!
-     */
+    /** No instance creation without data! */
     private BufferDescription() {}
 
     /**
@@ -62,6 +58,17 @@ public class BufferDescription {
     }
 
     /**
+     * Returns a string representation of the object.
+     *
+     * @return a string representation of the object.
+     */
+    @Override
+    public String toString() {
+
+        return String.format("%s: '%s', %d metadata entries", super.toString(), bufferName, metaData == null ? 0 : metaData.size());
+    }
+
+    /**
      * This method returns the name of the buffer, which this object belongs to.
      *
      * @return the name of the buffer. This name isn't <tt>null</tt>.
@@ -73,7 +80,7 @@ public class BufferDescription {
      * topics assigned to the buffer. They refers to a detailed description of the buffer features.
      *
      * @return the meta information assigned to the buffer. The returned map may be empty, if there is no meta information
-     * assigned to the buffer, but the result will never be <tt>null</tt>.
+     *         assigned to the buffer, but the result will never be <tt>null</tt>.
      */
     public Map<String, String> getBufferMetainfo() { return metaData; }
 }

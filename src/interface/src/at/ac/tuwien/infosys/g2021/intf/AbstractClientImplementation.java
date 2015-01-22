@@ -44,6 +44,8 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
 
     /**
      * Opens a connection to the daemon und registers this data point.
+     *
+     * @return the just now initialized endpoint or <tt>null</tt>
      */
     protected ClientEndpoint assignClientEndpoint() {
 
@@ -68,9 +70,7 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
         return connected;
     }
 
-    /**
-     * Release the client endpoint.
-     */
+    /** Release the client endpoint. */
     protected void releaseClientEndpoint() {
 
         synchronized (endpointLock) {
@@ -81,9 +81,7 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
         }
     }
 
-    /**
-     * Closes the connection to the client endpoint.
-     */
+    /** Closes the connection to the client endpoint. */
     void release() {
 
         releaseClientEndpoint();
@@ -181,9 +179,10 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
     @Override
     public void valueChanged(SimpleData newValue) {}
 
-    /**
-     * This is the notification about the lost connection to the daemon.
-     */
+    /** This is the notification about the lost connection to the daemon. */
     @Override
-    public void communicationLost() { releaseClientEndpoint(); }
+    public void communicationLost() {
+
+        releaseClientEndpoint();
+    }
 }

@@ -14,7 +14,6 @@ class DummyGatherer extends Gatherer {
     DummyGatherer(DummyGathererConfiguration config) {
 
         super(config);
-        setCurrentState(BufferState.READY);
         setCurrentValue(0.0);
     }
 
@@ -55,4 +54,23 @@ class DummyGatherer extends Gatherer {
             }
         }
     }
+
+    /**
+     * Sets an error state. This method is implemented for testing reasons only.
+     *
+     * @param state the new state
+     */
+    void set(BufferState state) {
+
+        synchronized (valueLock) {
+
+            if (get().getState() != BufferState.READY && state == BufferState.READY) {
+                setCurrentValue(0.0);
+            }
+            else if (get().getState() != state) {
+                setCurrentState(state);
+            }
+        }
+    }
 }
+

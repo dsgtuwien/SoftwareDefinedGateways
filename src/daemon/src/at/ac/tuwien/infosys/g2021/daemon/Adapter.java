@@ -3,6 +3,7 @@ package at.ac.tuwien.infosys.g2021.daemon;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
+import java.util.Date;
 import java.util.logging.Logger;
 
 /**
@@ -29,6 +30,7 @@ abstract class Adapter extends ValueChangeProducer implements ValueChangeConsume
     private Adapter() {
 
         valueLock = new Object();
+        currentValue = new SimpleData(new Date(), BufferState.INITIALIZING);
     }
 
     /**
@@ -71,18 +73,17 @@ abstract class Adapter extends ValueChangeProducer implements ValueChangeConsume
 
         synchronized (valueLock) {
 
-            if (value.getState() != currentValue.getState()
-                || value.getState() == BufferState.READY && !value.getValue().equals(currentValue.getValue())) {
+            if (!currentValue.equals(value)) {
                 currentValue = value;
-                fireValueChange(currentValue);
                 if (currentValue.getValue() == null) {
-                    logger.fine(String.format("An instance of '%s' distributes the new state %s of the buffer '%s'.",
-                                              getClass().getSimpleName(), value.getState().name(), value.getBufferName()));
+                    logger.fine(String.format("An instance of '%s' distributes the new state %s.",
+                                              getClass().getSimpleName(), value.getState().name()));
                 }
                 else {
-                    logger.fine(String.format("An instance of '%s' distributes the new value %.3f of the buffer '%s'.",
-                                              getClass().getSimpleName(), value.getValue().doubleValue(), value.getBufferName()));
+                    logger.fine(String.format("An instance of '%s' distributes the new value %.3f.",
+                                              getClass().getSimpleName(), value.getValue().doubleValue()));
                 }
+                fireValueChange(currentValue);
             }
         }
     }

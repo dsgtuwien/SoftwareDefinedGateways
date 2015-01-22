@@ -40,7 +40,7 @@ class LowpassAdapter extends Adapter {
         super(configuration);
 
         lastValueSent = 0.0;
-        currentInputValue = new SimpleData("???", new Date(), BufferState.INITIALIZING);
+        currentInputValue = new SimpleData(new Date(), BufferState.INITIALIZING);
 
         updater = new Updater();
         Daemon.get().timer().scheduleAtFixedRate(updater, 1000L, 1000L);
@@ -70,7 +70,7 @@ class LowpassAdapter extends Adapter {
 
                 lastValueSent = currentValue + config.getInterpolationFactor() * (lastValueSent - currentValue);
 
-                set(new SimpleData(currentInputValue.getBufferName(), new Date(), BufferState.READY, lastValueSent));
+                set(new SimpleData(new Date(), BufferState.READY, lastValueSent));
             }
         }
     }
@@ -86,8 +86,15 @@ class LowpassAdapter extends Adapter {
 
         synchronized (valueLock) {
             currentInputValue = newValue;
-            if (currentInputValue.getState() != BufferState.READY) set(currentInputValue);
+            if (currentInputValue.getState() != BufferState.READY) {
+                set(currentInputValue);
+            }
+            else if (get().getState() != BufferState.READY) {
+                lastValueSent = 0.0;
+                set(new SimpleData(newValue.getTimestamp(), BufferState.READY, lastValueSent));
+            }
         }
     }
 }
+
 

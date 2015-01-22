@@ -428,7 +428,7 @@ public class ClientEndpoint {
         logger.warning(String.format("The daemon at '%s:%d' doesn't answer.",
                                      CommunicationSettings.bufferDaemonAddress(),
                                      CommunicationSettings.bufferDaemonPort()));
-        disconnect();
+        disconnectImmediately();
     }
 
     /**

@@ -35,7 +35,7 @@ public class TriggeringAdapterConfiguration implements AdapterConfiguration {
         this.lowerThreshold = lowerThreshold;
         this.upperThreshold = upperThreshold;
         this.lowerOutput = lowerOutput;
-        this.lowerOutput = upperOutput;
+        this.upperOutput = upperOutput;
     }
 
     /**

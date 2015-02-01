@@ -6,8 +6,8 @@ import at.ac.tuwien.infosys.g2021.common.util.PanicError;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.Socket;
-import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.xml.XMLConstants;
@@ -191,51 +191,30 @@ class Connection {
         }
         else {
 
-            // At first we try to read incoming data into the byte array 'messageBytes', until the separator sequence is found.
-            byte[] messageBytes = new byte[0];
-            byte[] buffer = new byte[2048];
-            int bufferLength = Integer.MAX_VALUE;
+            byte[] messageBytes = new byte[65536];
+            InputStream stream = socket.getInputStream();
+            int used = 0;
+            int read;
 
-            while (bufferLength > 0) {
+            while (true) {
 
-                bufferLength = socket.getInputStream().read(buffer);
+                read = stream.read();
 
-                if (bufferLength > 0) {
-
-                    // Append the bytes read to the message bytes.
-                    byte[] newMessageBytes = new byte[messageBytes.length + bufferLength];
-                    System.arraycopy(messageBytes, 0, newMessageBytes, 0, messageBytes.length);
-                    System.arraycopy(buffer, 0, newMessageBytes, messageBytes.length, bufferLength);
-                    messageBytes = newMessageBytes;
-                }
-
-                // Checking for a separator at the end of the message bytes
-                if (messageBytes.length >= CommunicationSettings.MESSAGE_SEPARATOR.length) {
-
-                    byte[] suffix = new byte[CommunicationSettings.MESSAGE_SEPARATOR.length];
-                    System.arraycopy(messageBytes, messageBytes.length - suffix.length, suffix, 0, suffix.length);
-
-                    if (Arrays.equals(suffix, CommunicationSettings.MESSAGE_SEPARATOR)) {
-
-                        // Fine, the whole message has been received. Now the separator is thrown away and the we leave
-                        // the read loop by setting the buffer length to 0.
-                        byte[] newMessageBytes = new byte[messageBytes.length - CommunicationSettings.MESSAGE_SEPARATOR.length];
-                        System.arraycopy(messageBytes, 0, newMessageBytes, 0, newMessageBytes.length);
-                        messageBytes = newMessageBytes;
-                        bufferLength = 0;
-                    }
-                }
+                if (read < 0 || (byte)read == CommunicationSettings.MESSAGE_SEPARATOR[0]) break;
+                messageBytes[used++] = (byte)read;
             }
 
             // Now the received bytes are interpreted.
-            if (bufferLength < 0) {
+            if (read < 0) {
                 // An unexpected eof condition on the input stream is occurred.
                 disconnect();
                 throw new IOException("reading to a closed connection");
             }
             else {
                 // There is a message in the message byte array.
-                ByteArrayInputStream inputStream = new ByteArrayInputStream(messageBytes);
+                byte[] message = new byte[used];
+                System.arraycopy(messageBytes, 0, message, 0, used);
+                ByteArrayInputStream inputStream = new ByteArrayInputStream(message);
                 try {
                     result = jaxb.readXML(schema, inputStream);
                     logger.finer("A XML message has been read from the connection #" + id + ".");

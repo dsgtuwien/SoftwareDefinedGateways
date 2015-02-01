@@ -396,6 +396,9 @@ public class ClientEndpoint {
         }
         catch (InterruptedException e) {
 
+            // clear the interrupt flag
+            Thread.interrupted();
+
             logger.log(Level.WARNING,
                        String.format("The connection to the daemon at '%s:%d' has been interrupted.",
                                      CommunicationSettings.bufferDaemonAddress(),
@@ -404,7 +407,6 @@ public class ClientEndpoint {
 
             // Here an interrupt may result in a communication breakdown. We close the connection.
             disconnect();
-            Thread.currentThread().interrupt();
         }
         catch (TimeoutException e) {
             // The result is already right.
@@ -761,15 +763,11 @@ public class ClientEndpoint {
      */
     public void getOnChange(String bufferName) {
 
-        requestSerializer.lock();
         try {
             sender.get(bufferName);
         }
         catch (IOException io) {
             handleCommunicationError(io);
-        }
-        finally {
-            requestSerializer.unlock();
         }
     }
 

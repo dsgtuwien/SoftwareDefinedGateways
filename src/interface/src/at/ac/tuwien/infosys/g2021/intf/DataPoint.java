@@ -115,7 +115,7 @@ public class DataPoint {
             buffers = new HashMap<>();
             observers = new CopyOnWriteArrayList<>();
             streams = new WeakHashMap<>();
-            state = BufferState.INITIALIZING;
+            state = ClientEndpoint.get().isConnected() ? BufferState.INITIALIZING : BufferState.ISOLATED;
         }
 
         /** Opens a connection to the daemon und registers this data point. */
@@ -159,12 +159,15 @@ public class DataPoint {
             super.releaseClientEndpoint();
 
             // Here, there is no connection to the daemon. All of the buffers are in a faulted state!
-            synchronized (bufferLock) {
+            // This must not be done, if there is no daemon connection in the initialization phase.
+            if (buffers != null) {
+                synchronized (bufferLock) {
 
-                Collection<SimpleData> allBufferStates = buffers.values();
-                Date now = new Date();
+                    Collection<SimpleData> allBufferStates = buffers.values();
+                    Date now = new Date();
 
-                for (SimpleData oldState : allBufferStates) valueChanged(new SimpleData(oldState.getBufferName(), now, BufferState.FAULTED));
+                    for (SimpleData oldState : allBufferStates) valueChanged(new SimpleData(oldState.getBufferName(), now, BufferState.FAULTED));
+                }
             }
         }
 
@@ -212,6 +215,11 @@ public class DataPoint {
          */
         private void fireBufferChanged(SimpleData oldOne, SimpleData newOne) {
 
+            // We don't communicate about dummy values.
+            if (oldOne != null && oldOne.isDummy()) oldOne = null;
+            if (newOne != null && newOne.isDummy()) newOne = null;
+            if (newOne == oldOne) return;
+
             for (DataPointObserver observer : observers) observer.bufferChanged(DataPoint.this, oldOne, newOne);
         }
 
@@ -257,6 +265,12 @@ public class DataPoint {
          * @return the current state of the data point, which is never <tt>null</tt>.
          */
         private BufferState evaluateState() {
+
+            // A released buffer is in RELEASED state.
+            if (getState() == BufferState.RELEASED) return BufferState.RELEASED;
+
+            // If there is no connection to the daemon, the state is ISOLATED!
+            if (!ClientEndpoint.get().isConnected()) return BufferState.ISOLATED;
 
             // Evaluating the states of all assigned buffers
             boolean faulted = false;
@@ -340,7 +354,7 @@ public class DataPoint {
         void assign(String bufferName) throws IllegalArgumentException {
 
             ClientEndpoint endpoint = getClientEndpoint();
-            SimpleData initialValue = null;
+            boolean initialized;
 
             // Daemon not reachable -> there is no buffer to assign to
             if (endpoint == null) {
@@ -350,16 +364,13 @@ public class DataPoint {
 
                 // At first we try insert the buffer into the set of wellknown buffers.
                 synchronized (bufferLock) {
-                    if (!buffers.containsKey(bufferName)) {
-                        initialValue = new SimpleData();
-                        buffers.put(bufferName, initialValue);
-                    }
+                    initialized = buffers.putIfAbsent(bufferName, new SimpleData()) == null;
                 }
 
                 // If the buffer was unknown, we must evaluate the buffer value
-                if (initialValue != null && initialValue.isDummy()) {
+                if (initialized) {
                     try {
-                        initialValue = endpoint.getImmediate(bufferName);
+                        SimpleData initialValue = endpoint.getImmediate(bufferName);
 
                         // Ok, the buffer is assigned now
                         fireBufferAssigned(bufferName);
@@ -512,38 +523,41 @@ public class DataPoint {
         @Override
         public void valueChanged(SimpleData newValue) {
 
+            ClientEndpoint endpoint = getClientEndpoint();
+            SimpleData oldValue;
+            boolean isWellknown;
+
+            // Register the value change in the map of buffers
             synchronized (bufferLock) {
+                oldValue = buffers.get(newValue.getBufferName());
+                isWellknown = endpoint != null && oldValue != null;
+                if (isWellknown) buffers.put(newValue.getBufferName(), newValue);
+            }
 
-                ClientEndpoint endpoint = getClientEndpoint();
-                SimpleData oldValue = buffers.get(newValue.getBufferName());
+            // Distribute the value change
+            if (isWellknown) {
 
-                // Is this a wellknown buffer?
-                if (endpoint != null && oldValue != null) {
+                // Is the buffer changed?
+                if (!oldValue.equals(newValue)) {
 
-                    buffers.put(newValue.getBufferName(), newValue);
+                    // Notify the listeners
+                    fireBufferChanged(oldValue, newValue);
 
-                    // Is the buffer changed?
-                    if (!oldValue.equals(newValue)) {
-
-                        // Notify the listeners
-                        fireBufferChanged(oldValue, newValue);
-
-                        // Queue the new value for the listening streams
-                        for (BlockingQueue<SimpleData> queue : streams.keySet()) {
-                            try {
-                                queue.put(newValue);
-                            }
-                            catch (InterruptedException e) {
-                                // This exception must not be thrown, because this blocking queue has no limit.
-                                // We just set the interrupted flag of the calling thread.
-                                Thread.currentThread().interrupt();
-                            }
+                    // Queue the new value for the listening streams
+                    for (BlockingQueue<SimpleData> queue : streams.keySet()) {
+                        try {
+                            queue.put(newValue);
+                        }
+                        catch (InterruptedException e) {
+                            // This exception must not be thrown, because this blocking queue has no limit.
+                            // We just set the interrupted flag of the calling thread.
+                            Thread.currentThread().interrupt();
                         }
                     }
-
-                    // Order next change
-                    if (newValue.getState() != BufferState.RELEASED) endpoint.getOnChange(newValue.getBufferName());
                 }
+
+                // Order next change
+                if (newValue.getState() != BufferState.RELEASED) endpoint.getOnChange(newValue.getBufferName());
             }
         }
 

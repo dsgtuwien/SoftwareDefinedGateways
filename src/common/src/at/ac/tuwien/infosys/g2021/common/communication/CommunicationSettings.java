@@ -24,7 +24,7 @@ public final class CommunicationSettings {
     final static long DAEMON_ANSWER_TIMEOUT = 2500L;
 
     /** The separator string between messages */
-    final static byte[] MESSAGE_SEPARATOR = {'\r', '\n', '<', '>', '\r', '\n'};
+    final static byte[] MESSAGE_SEPARATOR = {'\r'};
 
     /** This is the logger. */
     private static final Logger LOGGER = Loggers.getLogger(CommunicationSettings.class);

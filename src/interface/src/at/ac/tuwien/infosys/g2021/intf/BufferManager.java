@@ -82,7 +82,7 @@ public class BufferManager {
          * @throws java.lang.IllegalArgumentException
          *          if the buffer is unknown
          */
-        public boolean release(String name) {
+        public boolean remove(String name) {
 
             ClientEndpoint endpoint = getClientEndpoint();
 
@@ -222,5 +222,5 @@ public class BufferManager {
      * @throws java.lang.IllegalArgumentException
      *          if the buffer is unknown
      */
-    public boolean release(String name) { return implementation.release(name); }
+    public boolean release(String name) { return implementation.remove(name); }
 }

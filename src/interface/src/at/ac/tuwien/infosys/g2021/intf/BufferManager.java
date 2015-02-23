@@ -1,6 +1,7 @@
 package at.ac.tuwien.infosys.g2021.intf;
 
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
+import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint;
 import at.ac.tuwien.infosys.g2021.common.communication.ValueChangeObserver;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
@@ -22,7 +23,7 @@ public class BufferManager {
      * Due to information hiding issues, the functionality of a buffer manager isn't implemented in the class
      * <tt>{@link at.ac.tuwien.infosys.g2021.intf.BufferManager}</tt> itself. This inner class is the real implementation
      * of a buffer manager.
-     * <p/>
+     * <p>
      * To prevent useless instances of this class - not regular released objects - there must not exist any
      * hard reference to this class except the only one in the <tt>{@link at.ac.tuwien.infosys.g2021.intf.BufferManager}</tt>
      * class. The <tt>{@link at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint}</tt> class
@@ -49,7 +50,7 @@ public class BufferManager {
          */
         BufferConfiguration get(String name) throws IllegalArgumentException {
 
-            ClientEndpoint endpoint = getClientEndpoint();
+            ClientEndpoint endpoint = getConnectedClientEndpoint();
 
             if (endpoint != null) return endpoint.getBufferConfiguration(name);
             else return null;
@@ -66,7 +67,7 @@ public class BufferManager {
          */
         boolean update(String name, BufferConfiguration configuration, boolean createAllowed) {
 
-            ClientEndpoint endpoint = getClientEndpoint();
+            ClientEndpoint endpoint = getConnectedClientEndpoint();
 
             if (endpoint != null) return endpoint.setBufferConfiguration(name, configuration, createAllowed);
             else return false;
@@ -84,7 +85,7 @@ public class BufferManager {
          */
         public boolean remove(String name) {
 
-            ClientEndpoint endpoint = getClientEndpoint();
+            ClientEndpoint endpoint = getConnectedClientEndpoint();
 
             if (endpoint != null) return endpoint.releaseBuffer(name);
             else return false;

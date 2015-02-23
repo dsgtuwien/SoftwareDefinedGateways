@@ -1,39 +1,26 @@
 package at.ac.tuwien.infosys.g2021.common.communication;
 
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.Message;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
-import at.ac.tuwien.infosys.g2021.common.util.PanicError;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import com.eclipsesource.json.JsonObject;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.xml.XMLConstants;
-import javax.xml.bind.JAXBException;
-import javax.xml.transform.stream.StreamSource;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
 
-/**
- * This is a TCP/IP connection, which exchanges
- * <tt>{@link at.ac.tuwien.infosys.g2021.common.communication.jaxb.Message}</tt>-objects. This class encapsulates all
- * the handling with byte arrays, XML, schemas and so on.
- */
+/** This is a TCP/IP connection, which exchanges Strings containing JSON objects. */
 class Connection {
 
     // The logger.
     private final static Logger logger = Loggers.getLogger(Connection.class);
 
-    // The XML schema of messages
-    private Schema schema;
-
-    // The JAXB-Interface to the messages
-    private JAXBInterface jaxb;
-
     // The socket of the connection
     private Socket socket;
+    private DataInputStream inputStream;
+    private DataOutputStream outputStream;
     private final Object senderLock;
 
     // Every connection has an id for logging reasons
@@ -50,20 +37,6 @@ class Connection {
         synchronized (idLock) {
             id = nextId++;
         }
-
-        // Loading the XML schema
-        SchemaFactory schemaFactory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
-        try {
-            schema = schemaFactory.newSchema(new StreamSource(getClass().getResourceAsStream("communication.xsd")));
-        }
-        catch (Exception exc) {
-            // We cannot find the schema or the schema is erroneous. This is a good reason for getting panic.
-            logger.log(Level.SEVERE, "Unable to load the schema 'communication.xsd':", exc);
-            throw new PanicError("missing schema 'communication.xsd': ", exc);
-        }
-
-        // Creating the JAXB-Interface
-        jaxb = new JAXBInterface();
     }
 
     /**
@@ -79,6 +52,10 @@ class Connection {
         socket = s;
 
         if (!isConnected()) throw new IOException("the socket is not connected");
+
+        inputStream = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
+        outputStream = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+
         logger.info(String.format("The connection '%s:%d' has been established as connection #%d.",
                                   socket.getInetAddress().toString(),
                                   socket.getPort(),
@@ -123,6 +100,8 @@ class Connection {
             }
             finally {
                 socket = null;
+                inputStream = null;
+                outputStream = null;
             }
         }
     }
@@ -134,7 +113,7 @@ class Connection {
      *
      * @throws java.io.IOException if the message cannot be sent
      */
-    void send(Message message) throws IOException {
+    void send(String message) throws IOException {
 
         if (message == null) {
             throw new NullPointerException("message is null");
@@ -144,25 +123,11 @@ class Connection {
             throw new IOException("sending to a closed connection");
         }
         else {
-            // At first we put the message into a byte array stream
-            ByteArrayOutputStream stream = new ByteArrayOutputStream();
-            try {
-                jaxb.writeXML(message, stream);
-            }
-            catch (JAXBException e) {
-                logger.log(Level.WARNING, "Cannot create a XML message: ", e);
-                throw new ProtocolException(e);
-            }
-
-            // Now we append the separator
-            stream.write(CommunicationSettings.MESSAGE_SEPARATOR);
-
-            // And write the whole byte array to the socket output stream
             try {
                 synchronized (senderLock) {
-                    socket.getOutputStream().write(stream.toByteArray());
-                    socket.getOutputStream().flush();
-                    logger.finer("A XML message has been sent over the connection #" + id + ".");
+                    outputStream.writeUTF(message);
+                    outputStream.flush();
+                    logger.fine(String.format("The message '%s' has been sent over the connection #%d.", message, getId()));
                 }
             }
             catch (Exception e) {
@@ -181,9 +146,9 @@ class Connection {
      *
      * @throws java.io.IOException if the message cannot be received
      */
-    Message receive() throws IOException {
+    JsonObject receive() throws IOException {
 
-        Message result;
+        JsonObject result;
 
         if (!isConnected()) {
             disconnect();
@@ -191,38 +156,21 @@ class Connection {
         }
         else {
 
-            byte[] messageBytes = new byte[65536];
-            InputStream stream = socket.getInputStream();
-            int used = 0;
-            int read;
+            try {
+                String message = inputStream.readUTF();
+                JsonInterface json = new JsonInterface();
 
-            while (true) {
-
-                read = stream.read();
-
-                if (read < 0 || (byte)read == CommunicationSettings.MESSAGE_SEPARATOR[0]) break;
-                messageBytes[used++] = (byte)read;
+                result = json.stringToJSON(message);
+                logger.fine(String.format("The JSON object '%s' has been read from the connection #%d.", message, getId()));
             }
-
-            // Now the received bytes are interpreted.
-            if (read < 0) {
-                // An unexpected eof condition on the input stream is occurred.
-                disconnect();
-                throw new IOException("reading to a closed connection");
+            catch (IOException e) {
+                // IOExceptions are rethrown
+                throw new IOException(e.getMessage(), e);
             }
-            else {
-                // There is a message in the message byte array.
-                byte[] message = new byte[used];
-                System.arraycopy(messageBytes, 0, message, 0, used);
-                ByteArrayInputStream inputStream = new ByteArrayInputStream(message);
-                try {
-                    result = jaxb.readXML(schema, inputStream);
-                    logger.finer("A XML message has been read from the connection #" + id + ".");
-                }
-                catch (JAXBException e) {
-                    logger.log(Level.WARNING, "Cannot read a XML message from the connection #" + id + ":", e);
-                    throw new ProtocolException(e);
-                }
+            catch (Exception e) {
+                // All other exceptions are treated as protocol violations
+                logger.log(Level.WARNING, "Cannot read a JSON object from the connection #" + id + ":", e);
+                throw new ProtocolException(e);
             }
         }
 

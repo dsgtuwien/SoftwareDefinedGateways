@@ -2,6 +2,7 @@ package at.ac.tuwien.infosys.g2021.intf;
 
 import at.ac.tuwien.infosys.g2021.common.BufferClass;
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
+import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.DummyAdapterConfiguration;
 import at.ac.tuwien.infosys.g2021.common.DummyGathererConfiguration;
 import at.ac.tuwien.infosys.g2021.common.ScalingAdapterConfiguration;

@@ -5,9 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * This is simply a data container describing the features of a buffer.
- */
+/** This is simply a data container describing the features of a buffer. */
 final public class BufferConfiguration {
 
     // The buffer class
@@ -49,6 +47,8 @@ final public class BufferConfiguration {
     public void setBufferClass(BufferClass bufferClass) {
 
         if (bufferClass == null) throw new NullPointerException("argument is null");
+        if (!gatherer.isBufferClassSupported(bufferClass)) throw new IllegalArgumentException("unserviceable gatherer");
+
         this.bufferClass = bufferClass;
     }
 
@@ -74,6 +74,7 @@ final public class BufferConfiguration {
     public void setGatherer(GathererConfiguration gatherer) {
 
         if (gatherer == null) throw new NullPointerException("argument is null");
+        if (!gatherer.isBufferClassSupported(bufferClass)) throw new IllegalArgumentException("bad buffer class");
 
         this.gatherer = gatherer;
     }

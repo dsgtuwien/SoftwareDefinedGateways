@@ -1,13 +1,12 @@
 package at.ac.tuwien.infosys.g2021.intf;
 
+import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint;
 import at.ac.tuwien.infosys.g2021.common.communication.ValueChangeObserver;
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 /**
  * This is an abstract implementation of classes communicating with a client endpoint. It manages the connection with the
@@ -30,6 +29,20 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
     }
 
     /**
+     * Get a thread-safe snapshot of the client endpoint. If the endpoint is not connected,
+     * a connection to the daemon is established.
+     *
+     * @return the current client endpoint
+     */
+    protected ClientEndpoint getConnectedClientEndpoint() {
+
+        synchronized (endpointLock) {
+            assignClientEndpoint();
+            return endpoint;
+        }
+    }
+
+    /**
      * Get a thread-safe snapshot of the client endpoint.
      *
      * @return the current client endpoint
@@ -37,7 +50,6 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
     protected ClientEndpoint getClientEndpoint() {
 
         synchronized (endpointLock) {
-            assignClientEndpoint();
             return endpoint;
         }
     }
@@ -98,7 +110,7 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
     Set<BufferDescription> queryBuffersByName(String bufferName) {
 
         Set<BufferDescription> result = new HashSet<>();
-        ClientEndpoint endpoint = getClientEndpoint();
+        ClientEndpoint endpoint = getConnectedClientEndpoint();
 
         if (endpoint != null) {
 
@@ -130,7 +142,7 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
     Set<BufferDescription> queryBuffersByMetainfo(String topic, String feature) {
 
         Set<BufferDescription> result = new HashSet<>();
-        ClientEndpoint endpoint = getClientEndpoint();
+        ClientEndpoint endpoint = getConnectedClientEndpoint();
 
         if (endpoint != null) {
 
@@ -160,12 +172,12 @@ abstract class AbstractClientImplementation implements ValueChangeObserver {
      */
     BufferDescription getBufferDescription(String name) throws IllegalArgumentException {
 
-        ClientEndpoint endpoint = getClientEndpoint();
+        ClientEndpoint endpoint = getConnectedClientEndpoint();
 
         if (endpoint != null) {
 
-            Map<String, String> metaData = endpoint.queryMetainfo(name);
-            if (metaData != null) return new BufferDescription(name, new TreeMap<>(metaData));
+            BufferDescription metaData = endpoint.queryMetainfo(name);
+            if (metaData != null) return metaData;
         }
 
         throw new IllegalArgumentException("unknown buffer '" + name + "'");

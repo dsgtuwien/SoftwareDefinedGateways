@@ -6,7 +6,6 @@
  * As server address and port "localhost:3449" is assumed. This defaults can be
  * overridden with the system properties "<tt>at.ac.tuwien.infosys.g2021.daemon.address</tt>"
  * and  "<tt>at.ac.tuwien.infosys.g2021.daemon.port</tt>".
- * <p>
  *
  * <h3>Object Model</h3>
  *
@@ -19,18 +18,15 @@
  * and sends the result as another message back to the <tt>ClientEndpoint</tt>. For every TCP/IP client connection there exists
  * a separate thread within the daemon. At the client side the calling thread is suspended until the answer from the daemon is
  * received. If there is no answer from the daemon within 2 seconds the <tt>ClientEndpoint</tt> assumes, that the daemon has died.
- * It closes the connection to the daemon and changes to the <tt>DISCONNECTED</tt> state.
- * <p>
- *
+ * It closes the connection to the daemon and changes to the <tt>ISOLATED</tt> state.
  *
  * <h3>Protocol</h3>
  *
- * Due to simpler debugging, all messages are sent as XMLs as defined in the schema
- * "<tt>communication.xsd</tt>". All messages are sent on a permanent open TCP/IP stream. Therefore
- * the XML messages are separated by a separator string ("<tt>\r\n&lt;&gt;\r\n</tt>").
+ * Due to simpler debugging, all messages are sent as JSON objects. They are sent on a permanent open TCP/IP stream. Therefore
+ * every message is sent as an UTF-8 encoded byte array (look for the <tt>DataOutputStream</tt> documentation of Java).
  * <p>
- * All XML messages are packed into a &lt;message&gt; tag as an envelope. Due to readability reasons, this envelope tag
- * is not show in the following scenarios.
+ * All messages have the same structure. The string property 'type' describes the kind of message. These types are shown
+ * in the following scenarios. The 'arguments' object contains any additional data to the message.
  *
  * <h4>Establishing a Connection</h4>
  *

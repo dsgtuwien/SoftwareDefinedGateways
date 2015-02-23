@@ -72,7 +72,19 @@ class Buffers extends ValueChangeProducer implements Component {
      *
      * @return the buffer or <tt>null</tt>, if the new buffer configuration is null
      */
-    Buffer create(String name, BufferConfiguration config) {
+    Buffer create(String name, BufferConfiguration config) { return create(name, config, false); }
+
+    /**
+     * This method creates a new buffer. If a buffer with the given name exists, this buffer is released
+     * before the new buffer is created.
+     *
+     * @param name       the buffer name
+     * @param config     the buffer configuration
+     * @param isHardware is this a hardwarebuffer?
+     *
+     * @return the buffer or <tt>null</tt>, if the new buffer configuration is null
+     */
+    Buffer create(String name, BufferConfiguration config, boolean isHardware) {
 
         synchronized (bufferLock) {
 
@@ -80,14 +92,13 @@ class Buffers extends ValueChangeProducer implements Component {
                 // Creating a new buffer. If the creation fails, the IllegalArgumentException
                 // is thrown. This is done BEFORE an existing buffer is removed, because the
                 // gatherer should remain opened, if both buffers use the same gatherer.
-                Buffer result = new Buffer(name, config);
+                Buffer result = new Buffer(name, config, isHardware);
 
                 // Removes an existing buffer
                 remove(name);
 
                 // Adding the new buffer and distribute its initial value
                 buffers.put(name, result);
-
                 logger.info(String.format("The buffer '%s' has been created.", name));
 
                 result.addValueChangeConsumer(listener);

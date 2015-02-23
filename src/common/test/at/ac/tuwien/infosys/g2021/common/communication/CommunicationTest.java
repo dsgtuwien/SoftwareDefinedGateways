@@ -1,21 +1,22 @@
 package at.ac.tuwien.infosys.g2021.common.communication;
 
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
+import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
-import org.junit.Before;
-import org.junit.Test;
 
 /**
  * This is the unit-test for the g2021 communication between the daemon and the
@@ -142,7 +143,7 @@ public class CommunicationTest implements ValueChangeObserver {
     @Test
     public void testQueryMetainfo() {
 
-        Map<String, String> metainfo;
+        BufferDescription metainfo;
 
         // Query for unknown buffer
         metainfo = client.queryMetainfo("buffer-n");
@@ -151,9 +152,11 @@ public class CommunicationTest implements ValueChangeObserver {
         // Query for known buffer
         metainfo = client.queryMetainfo("buffer-b");
         assertNotNull(metainfo);
-        assertEquals(2, metainfo.size());
-        assertEquals("egal", metainfo.get("topic-b"));
-        assertEquals("nischt da", metainfo.get("topic-c"));
+        assertEquals("buffer-b", metainfo.getBufferName());
+        assertFalse(metainfo.isHardwareBuffer());
+        assertEquals(2, metainfo.getBufferMetainfo().size());
+        assertEquals("egal", metainfo.getBufferMetainfo().get("topic-b"));
+        assertEquals("nischt da", metainfo.getBufferMetainfo().get("topic-c"));
     }
 
     /** This test case queries buffer configurations. */
@@ -245,14 +248,14 @@ public class CommunicationTest implements ValueChangeObserver {
             client.set("buffer-n", 1.0);
             assertTrue(false);
         }
-        catch (IllegalStateException e) { /* well done ! */ }
+        catch (IllegalArgumentException e) { /* well done ! */ }
 
         // Setting the value of a sensor
         try {
             client.set("buffer-a", 1.0);
             assertTrue(false);
         }
-        catch (IllegalStateException e) { /* well done ! */ }
+        catch (IllegalArgumentException e) { /* well done ! */ }
 
         // Setting an actor value.
         SimpleData answer = client.set("buffer-c", 12.0);

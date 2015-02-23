@@ -1,9 +1,9 @@
 package at.ac.tuwien.infosys.g2021.samples.loggingGBot;
 
+import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.intf.AbstractDataPointObserverImplementation;
-import at.ac.tuwien.infosys.g2021.intf.BufferDescription;
 import at.ac.tuwien.infosys.g2021.intf.DataPoint;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -11,8 +11,8 @@ import java.util.Collection;
 import java.util.Date;
 
 /**
- * This is a very simple program which uses the GBot interface to log the states of all available buffers to the
- * console.
+ * This is a very simple GBot which uses the DataPoint to log the states of all available buffers to the console.
+ * The LoggingGBot has no logic. It just dumps argument values of the DataPointObserver methods to the console.
  */
 public class LoggingGBot extends Thread {
 

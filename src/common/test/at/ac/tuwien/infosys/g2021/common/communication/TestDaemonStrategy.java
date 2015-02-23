@@ -175,6 +175,17 @@ class TestDaemonStrategy implements ClientRequestExecutionStrategy {
     }
 
     /**
+     * Represents this buffer a hardware port? This kind of buffer cannot be updated or removed.
+     *
+     * @param conn       the connection
+     * @param bufferName the name of the buffer
+     *
+     * @return <tt>true</tt>, if this buffer represents a hardware port
+     */
+    @Override
+    public boolean isHardwareBuffer(DaemonEndpoint conn, String bufferName) { return false; }
+
+    /**
      * Changes the configuration of a buffer. If the buffer doesn't exists and the
      * <tt>create</tt>-argument is set to <tt>true</tt>, a new buffer is created.
      *
@@ -237,5 +248,5 @@ class TestDaemonStrategy implements ClientRequestExecutionStrategy {
      * @return <tt>true</tt>, if the buffer is now released
      */
     @Override
-    public boolean releaseBuffer(DaemonEndpoint conn, String bufferName) { return configurations.containsKey(bufferName); }
+    public boolean removeBuffer(DaemonEndpoint conn, String bufferName) { return configurations.containsKey(bufferName); }
 }

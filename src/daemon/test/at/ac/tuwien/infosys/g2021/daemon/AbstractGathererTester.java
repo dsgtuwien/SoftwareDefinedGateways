@@ -26,6 +26,14 @@ abstract class AbstractGathererTester<T extends Gatherer> extends AbstractCompon
         assertNotNull(data.getValue());
         assertEquals(expected, data.getValue().doubleValue(), 1.0e-6);
     }
+
+    /** Verifying gatherer states. */
+    protected void checkState(SimpleData data, BufferState state) {
+
+        assertNotNull(data);
+        assertNotNull(data.getTimestamp());
+        assertEquals(state, data.getState());
+    }
 }
 
 

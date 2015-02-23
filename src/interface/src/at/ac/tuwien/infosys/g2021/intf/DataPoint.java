@@ -1,5 +1,6 @@
 package at.ac.tuwien.infosys.g2021.intf;
 
+import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint;
@@ -82,7 +83,7 @@ public class DataPoint {
      * of data points and implements all important methods of data points and all methods for receiving
      * value changes from the client endpoint too
      * (interface <tt>{@link at.ac.tuwien.infosys.g2021.common.communication.ValueChangeObserver}</tt>).
-     * <p/>
+     * <p>
      * To prevent useless instances of this class - not regular released objects - there must not exist any
      * hard reference to this class except the only one in the <tt>{@link at.ac.tuwien.infosys.g2021.intf.DataPoint}</tt>
      * class. The <tt>{@link at.ac.tuwien.infosys.g2021.common.communication.ClientEndpoint}</tt> class
@@ -353,7 +354,7 @@ public class DataPoint {
          */
         void assign(String bufferName) throws IllegalArgumentException {
 
-            ClientEndpoint endpoint = getClientEndpoint();
+            ClientEndpoint endpoint = getConnectedClientEndpoint();
             boolean initialized;
 
             // Daemon not reachable -> there is no buffer to assign to
@@ -442,12 +443,12 @@ public class DataPoint {
          * @param bufferName the name of the actor buffer
          * @param value      the new value
          *
-         * @throws IllegalArgumentException if the buffer isn't assigned to this data point
-         * @throws IllegalStateException    if the buffer isn't an actor or the actor isn't in the state <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#READY}</tt>.
+         * @throws java.lang.IllegalArgumentException
+         *          if the buffer isn't assigned to this data point or is not changable (e.g. an actor)
          */
-        void set(String bufferName, Number value) throws IllegalArgumentException, IllegalStateException {
+        void set(String bufferName, Number value) throws IllegalArgumentException {
 
-            ClientEndpoint endpoint = getClientEndpoint();
+            ClientEndpoint endpoint = getConnectedClientEndpoint();
             SimpleData currentValue;
 
             synchronized (bufferLock) {
@@ -461,17 +462,17 @@ public class DataPoint {
                 throw new IllegalArgumentException("unknown buffer '" + bufferName + "'");
             }
             else if (endpoint == null) {
-                throw new IllegalStateException("buffer '" + bufferName + "' is in wrong state: " + BufferState.FAULTED.name());
+                throw new IllegalStateException("buffer '" + bufferName + "' is not reachable.");
             }
             else {
                 currentValue = endpoint.set(bufferName, value);
+                valueChanged(currentValue);
+                updateState();
                 if (currentValue.getState() == BufferState.READY) {
-                    valueChanged(currentValue);
                     logger.info(String.format("The value of buffer '%s' is set to %.3f from data point #%d.", bufferName, value.doubleValue(), getId()));
-                    updateState();
                 }
                 else {
-                    throw new IllegalStateException("unable to change faulted buffer 'bufferName'");
+                    logger.info(String.format("The state of buffer '%s' from data point #%d is now '%s'.", bufferName, getId(), currentValue.getState().name()));
                 }
             }
         }
@@ -523,25 +524,21 @@ public class DataPoint {
         @Override
         public void valueChanged(SimpleData newValue) {
 
-            ClientEndpoint endpoint = getClientEndpoint();
-            SimpleData oldValue;
-            boolean isWellknown;
+            SimpleData oldValue = null;
 
             // Register the value change in the map of buffers
             synchronized (bufferLock) {
-                oldValue = buffers.get(newValue.getBufferName());
-                isWellknown = endpoint != null && oldValue != null;
-                if (isWellknown) buffers.put(newValue.getBufferName(), newValue);
+                if (buffers.containsKey(newValue.getBufferName())) {
+                    oldValue = buffers.get(newValue.getBufferName());
+                    buffers.put(newValue.getBufferName(), newValue);
+                }
             }
 
             // Distribute the value change
-            if (isWellknown) {
+            if (oldValue != null) {
 
                 // Is the buffer changed?
                 if (!oldValue.equals(newValue)) {
-
-                    // Notify the listeners
-                    fireBufferChanged(oldValue, newValue);
 
                     // Queue the new value for the listening streams
                     for (BlockingQueue<SimpleData> queue : streams.keySet()) {
@@ -554,10 +551,16 @@ public class DataPoint {
                             Thread.currentThread().interrupt();
                         }
                     }
+
+                    // Notify the listeners
+                    fireBufferChanged(oldValue, newValue);
                 }
 
-                // Order next change
-                if (newValue.getState() != BufferState.RELEASED) endpoint.getOnChange(newValue.getBufferName());
+                // Order the next change
+                ClientEndpoint endpoint = getClientEndpoint();
+                if (endpoint != null && endpoint.isConnected() && newValue.getState() != BufferState.RELEASED) {
+                    endpoint.getOnChange(newValue.getBufferName());
+                }
             }
         }
 
@@ -783,11 +786,9 @@ public class DataPoint {
      * @param value      the new value
      *
      * @throws java.lang.IllegalArgumentException
-     *          if the buffer isn't assigned to this data point
-     * @throws java.lang.IllegalStateException
-     *          if the buffer isn't an actor or the actor isn't in the state <tt>{@link at.ac.tuwien.infosys.g2021.common.BufferState#READY}</tt>.
+     *          if the buffer isn't assigned to this data point or is not changable (e.g. an actor)
      */
-    public void set(String bufferName, Number value) throws IllegalArgumentException, IllegalStateException {
+    public void set(String bufferName, Number value) throws IllegalArgumentException {
 
         implementation.set(bufferName, value);
     }

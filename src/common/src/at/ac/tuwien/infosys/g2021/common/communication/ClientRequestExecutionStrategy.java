@@ -70,11 +70,23 @@ public interface ClientRequestExecutionStrategy {
     public BufferConfiguration bufferConfiguration(DaemonEndpoint conn, String bufferName);
 
     /**
+     * Represents this buffer a hardware port? This kind of buffer cannot be updated or removed.
+     *
+     * @param conn       the connection
+     * @param bufferName the name of the buffer
+     *
+     * @return <tt>true</tt>, if this buffer represents a hardware port
+     */
+    public boolean isHardwareBuffer(DaemonEndpoint conn, String bufferName);
+
+    /**
      * Changes the configuration of a buffer. If the buffer doesn't exists and the
      * <tt>create</tt>-argument is set to <tt>true</tt>, a new buffer is created.
      *
      * @param conn       the connection
      * @param bufferName the name of the buffer
+     * @param config     the buffer configuration
+     * @param create     is buffer creation allowed
      *
      * @return the buffer configuration or <tt>null</tt>, is no buffer with this name is known
      */
@@ -109,7 +121,7 @@ public interface ClientRequestExecutionStrategy {
      *
      * @return <tt>true</tt>, if the buffer is now released
      */
-    public boolean releaseBuffer(DaemonEndpoint conn, String bufferName);
+    public boolean removeBuffer(DaemonEndpoint conn, String bufferName);
 }
 
 

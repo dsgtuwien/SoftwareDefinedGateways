@@ -2,18 +2,8 @@ package at.ac.tuwien.infosys.g2021.common.communication;
 
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.EstablishTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetBufferConfigurationTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetImmediateTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.Message;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersByMetainfoTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersByNameTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryMetainfoTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ReleaseBufferTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.SetBufferConfigurationTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.SetTag;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
+import com.eclipsesource.json.JsonObject;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Collections;
@@ -83,208 +73,97 @@ public class DaemonEndpoint {
 
                 while (client != null && messageSender != null && !interrupted()) {
 
-                    Message message = client.receive();
+                    JsonObject message = client.receive();
+                    JsonObject arguments = message.get(JsonInterface.ARGUMENTS).asObject();
+                    JsonInterface json = new JsonInterface();
 
-                    // Interpret the received message and send an answer.
-                    if (message.getAccepted() != null) {
-                        logger.warning(String.format("An 'Accept' message has been received from the client connection #%d.",
-                                                     client.getId()));
-                        handleProtocolViolation();
-                    }
-                    else if (message.getBufferConfiguration() != null) {
-                        logger.warning(String.format("An 'Accept' message has been received from the client connection #%d.",
-                                                     client.getId()));
-                        handleProtocolViolation();
-                    }
-                    else if (message.getBufferMetainfo() != null) {
-                        logger.warning(String.format("A 'BufferMetaInfo' message has been received from the client connection #%d.",
-                                                     client.getId()));
-                        handleProtocolViolation();
-                    }
-                    else if (message.getBufferNames() != null) {
-                        logger.warning(String.format("A 'BufferNames' message has been received from the client connection #%d.",
-                                                     client.getId()));
-                        handleProtocolViolation();
-                    }
-                    else if (message.getDisconnect() != null) {
-                        logger.info(String.format("A 'Disconnect' message has been received from the client connection #%d.",
-                                                  client.getId()));
-                        disconnectImmediately();
-                    }
-                    else if (message.getEstablish() != null) {
-
-                        EstablishTag tag = message.getEstablish();
-
-                        if (tag.getVersion() == CommunicationSettings.version()) {
-                            logger.fine(String.format("An 'Establish' message has been received from the client connection #%d.",
-                                                      client.getId()));
-                            messageSender.accepted();
-                        }
-                        else {
-                            logger.warning(String.format("An 'Establish' message with an illegal version id has been received from the client " +
-                                                         "connection #%d. The required version is %d, the current daemon version is %d.",
-                                                         client.getId(), tag.getVersion(), CommunicationSettings.version()));
-                            messageSender.rejected("illegal version");
+                    // Interpret the received message and create an answer.
+                    switch (message.get(JsonInterface.TYPE).asString()) {
+                        case JsonInterface.DISCONNECT:
                             disconnectImmediately();
-                        }
-                    }
-                    else if (message.getGet() != null) {
+                            break;
 
-                        GetTag tag = message.getGet();
+                        case JsonInterface.ESTABLISH:
+                            if (arguments.get(JsonInterface.VERSION).asInt() == CommunicationSettings.version()) {
+                                messageSender.accepted();
+                            }
+                            else {
+                                messageSender.rejected("illegal version");
+                                disconnectImmediately();
+                            }
+                            break;
 
-                        if (daemon.bufferExists(DaemonEndpoint.this, tag.getName())) {
-                            logger.fine(String.format("A 'Get' message for buffer '%s' has been received from the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            buffersToPush.add(tag.getName());
-                        }
-                        else {
-                            logger.info(String.format("A 'Get' message for an unknown buffer '%s' has been received from the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                        }
-                    }
-                    else if (message.getGetBufferConfiguration() != null) {
+                        case JsonInterface.GET:
+                            String name = arguments.get(JsonInterface.NAME).asString();
+                            if (daemon.bufferExists(DaemonEndpoint.this, name)) buffersToPush.add(name);
+                            break;
 
-                        GetBufferConfigurationTag tag = message.getGetBufferConfiguration();
-                        BufferConfiguration configuration = daemon.bufferConfiguration(DaemonEndpoint.this, tag.getName());
+                        case JsonInterface.GET_BUFFER_CONFIGURATION:
+                            BufferConfiguration configuration = daemon.bufferConfiguration(DaemonEndpoint.this, arguments.get(JsonInterface.NAME).asString());
+                            if (configuration != null) messageSender.bufferConfiguration(configuration);
+                            else messageSender.rejected("unknown buffer");
+                            break;
 
-                        if (configuration != null) {
-                            logger.fine(String.format("A 'GetBufferConfiguration' message for buffer '%s' has been received from " +
-                                                      "the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.bufferConfiguration(configuration);
-                        }
-                        else {
-                            logger.info(String.format("A 'GetBufferConfiguration' message for an unknown buffer '%s' has been recei" +
-                                                      "ved from the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.rejected("unknown buffer: " + tag.getName());
-                        }
-                    }
-                    else if (message.getGetImmediate() != null) {
+                        case JsonInterface.GET_IMMEDIATE:
+                            SimpleData value = daemon.bufferValue(DaemonEndpoint.this, arguments.get(JsonInterface.NAME).asString());
+                            if (value != null) messageSender.push(value, false);
+                            else messageSender.rejected("unknown buffer");
+                            break;
 
-                        GetImmediateTag tag = message.getGetImmediate();
-                        SimpleData value = daemon.bufferValue(DaemonEndpoint.this, tag.getName());
+                        case JsonInterface.QUERY_BUFFER_BY_METAINFO:
+                            messageSender.bufferNames(daemon.queryBuffersByMetainfo(DaemonEndpoint.this,
+                                                                                    arguments.get(JsonInterface.TOPIC).asString(),
+                                                                                    arguments.get(JsonInterface.METAINFO).asString()));
+                            break;
 
-                        if (value != null) {
-                            logger.fine(String.format("A 'GetImmediate' message for buffer '%s' has been received from the " +
-                                                      "client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.push(value, false);
-                        }
-                        else {
-                            logger.info(String.format("A 'GetImmediate' message for an unknown buffer '%s' has been received from " +
-                                                      "the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.rejected("unknown buffer: " + tag.getName());
-                        }
-                    }
-                    else if (message.getPush() != null) {
-                        logger.warning(String.format("A 'Push' message has been received from the client connection #%d.",
-                                                     client.getId()));
-                        handleProtocolViolation();
-                    }
-                    else if (message.getQueryBuffersByMetainfo() != null) {
+                        case JsonInterface.QUERY_BUFFER_BY_NAME:
+                            messageSender.bufferNames(daemon.queryBuffersByName(DaemonEndpoint.this,
+                                                                                arguments.get(JsonInterface.NAME).asString()));
+                            break;
 
-                        QueryBuffersByMetainfoTag tag = message.getQueryBuffersByMetainfo();
+                        case JsonInterface.QUERY_METAINFO:
+                            name = arguments.get(JsonInterface.NAME).asString();
+                            configuration = daemon.bufferConfiguration(DaemonEndpoint.this, name);
+                            if (configuration != null) {
+                                messageSender.bufferMetainfo(name,
+                                                             daemon.isHardwareBuffer(DaemonEndpoint.this, name),
+                                                             configuration.getMetainfo());
+                            }
+                            else {
+                                messageSender.rejected("unknown buffer");
+                            }
+                            break;
 
-                        logger.fine(String.format("A 'QueryBuffersByMetainfo' message for buffers with topics '%s' and features " +
-                                                  "'%s' has been received from the client connection #%d.",
-                                                  tag.getTopic(), tag.getMetainfo(), client.getId()));
-                        messageSender.bufferNames(daemon.queryBuffersByMetainfo(DaemonEndpoint.this, tag.getTopic(), tag.getMetainfo()));
-                    }
-                    else if (message.getQueryBuffersByName() != null) {
+                        case JsonInterface.RELEASE_BUFFER:
+                            if (daemon.removeBuffer(DaemonEndpoint.this, arguments.get(JsonInterface.NAME).asString())) messageSender.accepted();
+                            else messageSender.rejected("unknown buffer");
+                            break;
 
-                        QueryBuffersByNameTag tag = message.getQueryBuffersByName();
+                        case JsonInterface.SET:
+                            value = daemon.setBufferValue(DaemonEndpoint.this, arguments.get(JsonInterface.NAME).asString(), arguments.get(JsonInterface.VALUE).asDouble());
+                            if (value != null) messageSender.push(value, false);
+                            else messageSender.rejected("unknown actor");
+                            break;
 
-                        logger.fine(String.format("A 'QueryBuffersByName' message for buffers with names " +
-                                                  "'%s' has been received from the client connection #%d.",
-                                                  tag.getName(), client.getId()));
-                        messageSender.bufferNames(daemon.queryBuffersByName(DaemonEndpoint.this, tag.getName()));
-                    }
-                    else if (message.getQueryMetainfo() != null) {
+                        case JsonInterface.SET_BUFFER_CONFIGURATION:
+                            if (daemon.setBufferConfiguration(DaemonEndpoint.this,
+                                                              arguments.get(JsonInterface.NAME).asString(),
+                                                              json.configurationFromJSON(arguments.get(JsonInterface.CONFIGURATION).asObject()),
+                                                              arguments.get(JsonInterface.CREATE).asBoolean())) {
+                                messageSender.accepted();
+                            }
+                            else {
+                                messageSender.rejected("wrong buffer configuration");
+                            }
+                            break;
 
-                        QueryMetainfoTag tag = message.getQueryMetainfo();
-                        BufferConfiguration configuration = daemon.bufferConfiguration(DaemonEndpoint.this, tag.getName());
+                        case JsonInterface.SHUTDOWN:
+                            new Killer();
+                            break;
 
-                        if (configuration != null) {
-                            logger.fine(String.format("A 'QueryMetainfo' message for buffer '%s' has been received " +
-                                                      "from the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.bufferMetainfo(tag.getName(), configuration.getMetainfo());
-                        }
-                        else {
-                            logger.info(String.format("A 'QueryMetainfo' message for an unknown buffer '%s' has been " +
-                                                      "received from the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.rejected("unknown buffer: " + tag.getName());
-                        }
-                    }
-                    else if (message.getRejected() != null) {
-                        logger.warning(String.format("A 'Rejected' message has been received from the client connection #%d.",
-                                                     client.getId()));
-                        handleProtocolViolation();
-                    }
-                    else if (message.getReleaseBuffer() != null) {
-
-                        ReleaseBufferTag tag = message.getReleaseBuffer();
-
-                        if (daemon.releaseBuffer(DaemonEndpoint.this, tag.getName())) {
-                            logger.fine(String.format("A 'ReleaseBuffer' message for buffer '%s' has been received " +
-                                                      "from the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.accepted();
-                        }
-                        else {
-                            logger.info(String.format("A 'ReleaseBuffer' message for an unknown buffer '%s' has been " +
-                                                      "received from the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.rejected("unknown buffer: " + tag.getName());
-                        }
-                    }
-                    else if (message.getSet() != null) {
-
-                        SetTag tag = message.getSet();
-                        SimpleData value = daemon.setBufferValue(DaemonEndpoint.this, tag.getName(), tag.getValue());
-
-                        if (value != null) {
-                            logger.fine(String.format("A 'Set' message for buffer '%s' has been received from the " +
-                                                      "client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.push(value, false);
-                        }
-                        else {
-                            logger.info(String.format("A 'Set' message for an unknown buffer '%s' has been received from " +
-                                                      "the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.rejected("unknown buffer: " + tag.getName());
-                        }
-                    }
-                    else if (message.getSetBufferConfiguration() != null) {
-
-                        SetBufferConfigurationTag tag = message.getSetBufferConfiguration();
-                        JAXBInterface jaxb = new JAXBInterface();
-
-                        if (daemon.setBufferConfiguration(DaemonEndpoint.this, tag.getName(), jaxb.configurationFromXML(tag.getBufferConfiguration()), tag.isCreate())) {
-                            logger.fine(String.format("A 'SetBufferConfiguration' message for buffer '%s' has been received from " +
-                                                      "the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.accepted();
-                        }
-                        else {
-                            logger.info(String.format("A 'SetBufferConfiguration' message for the buffer '%s' with a wrong buffer configuration " +
-                                                      "has been received from the client connection #%d.",
-                                                      tag.getName(), client.getId()));
-                            messageSender.rejected("wrong buffer configuration: " + tag.getName());
-                        }
-                    }
-                    else if (message.getShutdown() != null) {
-                        logger.info(String.format("A 'Shutdown' message has been received from the client connection #%d.",
-                                                  client.getId()));
-                        new Killer();
-                    }
-                    else {
-                        logger.warning("An unknown message has been received from buffer daemon.");
-                        handleProtocolViolation();
+                        default:
+                            handleProtocolViolation();
+                            break;
                     }
 
                     client = connection;
@@ -362,6 +241,8 @@ public class DaemonEndpoint {
     /**
      * Establishes the connection to a client JVM. Is the connection is established, any call to this
      * method is ignored.
+     *
+     * @param socket the socket to the client JVM
      *
      * @throws java.io.IOException if this operation fails
      */
@@ -445,8 +326,10 @@ public class DaemonEndpoint {
     /** A protocol violation has occurred. The connection will be closed. */
     private void handleProtocolViolation() {
 
-        logger.warning(String.format("The client at connection #%d uses an unknown protocol.", connection.getId()));
-        disconnectImmediately();
+        if (isConnected()) {
+            logger.warning(String.format("The client at connection #%d uses an unknown protocol.", connection.getId()));
+            disconnectImmediately();
+        }
     }
 
     /**
@@ -456,10 +339,12 @@ public class DaemonEndpoint {
      */
     private void handleCommunicationError(Exception io) {
 
-        logger.log(Level.WARNING,
-                   String.format("Cannot communicate with the client at connection #%d.", connection.getId()),
-                   io);
-        disconnectImmediately();
+        if (isConnected()) {
+            logger.log(Level.WARNING,
+                       String.format("Due to an communication error, the connection #%d is not usable.", connection.getId()),
+                       io);
+            disconnectImmediately();
+        }
     }
 
     /**

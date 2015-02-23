@@ -178,6 +178,7 @@ public class TimeControl {
                 resultQueue.put(dataPoint.getAll());
                 if (count != 0) remaining--;
                 task = null;
+                restarted = false;
                 start();
             }
         }

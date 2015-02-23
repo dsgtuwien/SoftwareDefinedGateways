@@ -49,6 +49,7 @@ class Buffer extends ValueChangeProducer {
 
     // The buffer name
     private String name;
+    private boolean hardwareBuffer;
 
     // The configuration
     private BufferConfiguration configuration;
@@ -74,17 +75,29 @@ class Buffer extends ValueChangeProducer {
     }
 
     /**
-     * Initialization of the buffer.
+     * Initialization of a software buffer.
      *
      * @param name   the buffer name
      * @param config the buffer configuration
      *
      * @throws IllegalArgumentException if there are inconsistencies within the configuration
      */
-    Buffer(String name, BufferConfiguration config) throws IllegalArgumentException {
+    Buffer(String name, BufferConfiguration config) throws IllegalArgumentException { this(name, config, false); }
+
+    /**
+     * Initialization of the buffer.
+     *
+     * @param name   the buffer name
+     * @param config the buffer configuration
+     * @param hw     is this buffer a hardware buffer?
+     *
+     * @throws IllegalArgumentException if there are inconsistencies within the configuration
+     */
+    Buffer(String name, BufferConfiguration config, boolean hw) throws IllegalArgumentException {
 
         this();
         this.name = name;
+        this.hardwareBuffer = hw;
         this.configuration = config;
 
         // Looking for the gatherer
@@ -198,6 +211,20 @@ class Buffer extends ValueChangeProducer {
     String getName() { return name; }
 
     /**
+     * Represents this buffer a hardware port? This kind of buffer cannot be updated or removed.
+     *
+     * @return <tt>true</tt>, if this buffer represents a hardware port
+     */
+    public boolean isHardwareBuffer() { return hardwareBuffer; }
+
+    /**
+     * Represents this buffer an actor?
+     *
+     * @return <tt>true</tt>, if this buffer represents an actor
+     */
+    public boolean isActor() { return getConfiguration().getBufferClass() == BufferClass.ACTOR; }
+
+    /**
      * Returns the current buffer configuration.
      *
      * @return the buffer configuration
@@ -223,7 +250,7 @@ class Buffer extends ValueChangeProducer {
             BufferState state = gatherer == null ? BufferState.RELEASED : gatherer.get().getState();
 
             if (state == BufferState.READY) state = readyState;
-            setValue(new SimpleData(name, new Date(), state));
+            currentValue = new SimpleData(name, new Date(), state);
         }
     }
 
@@ -265,10 +292,10 @@ class Buffer extends ValueChangeProducer {
      * Puts the current value into the gatherer of an actor.
      *
      * @param value the new buffer value
-     *
-     * @return <tt>true</tt>, if the gatherer is an actor and is in the ready state.
      */
     boolean put(Number value) {
+
+        boolean result = false;
 
         if (configuration.getBufferClass() == BufferClass.ACTOR) {
 
@@ -276,18 +303,22 @@ class Buffer extends ValueChangeProducer {
 
                 BufferState state = gatherer == null ? BufferState.RELEASED : gatherer.get().getState();
 
-                if (state == BufferState.READY) {
+                switch (state) {
+                    case INITIALIZING:
+                    case READY:
+                    case FAULTED:
 
-                    SimpleData data = new SimpleData(name, new Date(), state, value);
+                        SimpleData data = new SimpleData(name, new Date(), BufferState.READY, value);
 
-                    setValue(data);
-                    adapters.put(data);
-                    return true;
+                        currentValue = data;
+                        adapters.put(data);
+                        result = true;
+                        break;
                 }
             }
         }
 
-        return false;
+        return result;
     }
 }
 

@@ -110,6 +110,22 @@ public class Daemon {
         }
 
         /**
+         * Represents this buffer a hardware port? This kind of buffer cannot be updated or removed.
+         *
+         * @param conn       the connection
+         * @param bufferName the name of the buffer
+         *
+         * @return <tt>true</tt>, if this buffer represents a hardware port
+         */
+        @Override
+        public boolean isHardwareBuffer(DaemonEndpoint conn, String bufferName) {
+
+            Buffer buffer = buffers.bufferByName(bufferName);
+
+            return buffer != null && buffer.isHardwareBuffer();
+        }
+
+        /**
          * Changes the configuration of a buffer. If the buffer doesn't exists and the
          * <tt>create</tt>-argument is set to <tt>true</tt>, a new buffer is created.
          *
@@ -125,7 +141,9 @@ public class Daemon {
 
             boolean result = false;
 
-            if (create || buffers.bufferByName(bufferName) != null) {
+            Buffer existing = buffers.bufferByName(bufferName);
+
+            if (existing != null && !existing.isHardwareBuffer() || existing == null && create) {
                 if (buffers.create(bufferName, config) != null) result = true;
             }
 
@@ -163,10 +181,7 @@ public class Daemon {
             Buffer buffer = buffers.bufferByName(bufferName);
             SimpleData result = null;
 
-            if (buffer != null) {
-                buffer.put(value);
-                result = buffer.get();
-            }
+            if (buffer != null && buffer.put(value)) result = buffer.get();
 
             return result;
         }
@@ -213,9 +228,10 @@ public class Daemon {
          * @return <tt>true</tt>, if the buffer is now released
          */
         @Override
-        public boolean releaseBuffer(DaemonEndpoint conn, String bufferName) {
+        public boolean removeBuffer(DaemonEndpoint conn, String bufferName) {
 
-            return buffers.remove(bufferName) != null;
+            Buffer existing = buffers.bufferByName(bufferName);
+            return existing != null && !existing.isHardwareBuffer() && buffers.remove(bufferName) != null;
         }
     }
 
@@ -251,6 +267,9 @@ public class Daemon {
 
     // All known buffers
     private Buffers buffers;
+
+    // The hardware driver
+    private Driver driver;
 
     // A set of connection to the clients.
     private final Set<DaemonEndpoint> connections;
@@ -299,12 +318,14 @@ public class Daemon {
         timer = new Timer(true);
         gatherers = new Gatherers();
         buffers = new Buffers();
+        driver = new Driver();
         logger.info("Initialization of all components is started.");
 
         // Now the main parts can work together
         gatherers.initialize();
         buffers.initialize();
         buffers.addValueChangeConsumer(new ValueChangeListener());
+        driver.initialize();
 
         // At last the server socket is initialized
         if (openSocket) {
@@ -366,27 +387,42 @@ public class Daemon {
         if (exitCode == 0) {
 
             // Disconnecting all known connections.
-            for (DaemonEndpoint connection : connections) connection.disconnect();
+            if (connections != null) {
+                for (DaemonEndpoint connection : connections) connection.disconnect();
+            }
 
             // Shutdown all components
-            buffers.shutdown();
-            gatherers.shutdown();
-            logger.info("All components has performed a shutdown.");
+            if (driver != null) driver.shutdown();
+            if (buffers != null) buffers.shutdown();
+            if (gatherers != null) gatherers.shutdown();
+            logger.info("All components have performed a shutdown.");
         }
 
         // Disconnecting all remaining connections immediately.
-        for (DaemonEndpoint connection : connections) connection.disconnectImmediately();
+        if (connections != null) {
+            for (DaemonEndpoint connection : connections) connection.disconnectImmediately();
+        }
 
         // Now release the system resources
-        buffers.release();
-        buffers = null;
-        gatherers.release();
-        gatherers = null;
+        if (driver != null) {
+            driver.release();
+            driver = null;
+        }
+        if (buffers != null) {
+            buffers.release();
+            buffers = null;
+        }
+        if (gatherers != null) {
+            gatherers.release();
+            gatherers = null;
+        }
 
         // Now the timer thread is stopped
-        timer.cancel();
-        timer = null;
-        logger.info("All system resources has been released.");
+        if (timer != null) {
+            timer.cancel();
+            timer = null;
+        }
+        logger.info("All system resources have been released.");
 
         // And finally exit the process
         if (exitOnShutdown) {
@@ -425,6 +461,13 @@ public class Daemon {
      * @return the buffers
      */
     public Buffers buffers() { return buffers; }
+
+    /**
+     * Returns the driver.
+     *
+     * @return the driver
+     */
+    public Driver driver() { return driver; }
 
     /**
      * Adds a connection to the set of wellknown connections.

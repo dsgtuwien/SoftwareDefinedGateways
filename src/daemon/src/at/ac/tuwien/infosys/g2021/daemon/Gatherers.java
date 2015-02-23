@@ -1,7 +1,9 @@
 package at.ac.tuwien.infosys.g2021.daemon;
 
+import at.ac.tuwien.infosys.g2021.common.ActorGathererConfiguration;
 import at.ac.tuwien.infosys.g2021.common.DummyGathererConfiguration;
 import at.ac.tuwien.infosys.g2021.common.GathererConfiguration;
+import at.ac.tuwien.infosys.g2021.common.SensorGathererConfiguration;
 import at.ac.tuwien.infosys.g2021.common.TestGathererConfiguration;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
 import at.ac.tuwien.infosys.g2021.common.util.NotYetImplementedError;
@@ -88,6 +90,14 @@ class Gatherers implements Component {
 
                     case TEST:
                         result = new TestGatherer((TestGathererConfiguration)config);
+                        break;
+
+                    case ACTOR:
+                        result = new ActorGatherer((ActorGathererConfiguration)config);
+                        break;
+
+                    case SENSOR:
+                        result = new SensorGatherer((SensorGathererConfiguration)config);
                         break;
 
                     default:

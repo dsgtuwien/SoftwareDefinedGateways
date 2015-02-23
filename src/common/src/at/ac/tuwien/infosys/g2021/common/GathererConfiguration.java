@@ -9,4 +9,14 @@ public interface GathererConfiguration {
      * @return the kind of gatherer
      */
     public GathererClass kindOfGatherer();
+
+    /**
+     * Is this buffer class supported by the gatherer?
+     *
+     * @param bufferClass the buffer class
+     *
+     * @return <tt>true</tt>, if this kind of buffer is supported by the gatherer
+     */
+    public boolean isBufferClassSupported(BufferClass bufferClass);
 }
+

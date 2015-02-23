@@ -7,6 +7,7 @@
     </content>
     <orderEntry type="jdk" jdkName="1.8" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
-    <orderEntry type="module" module-name="interface" exported="" />
+    <orderEntry type="module" module-name="interface" />
+    <orderEntry type="module" module-name="common" />
   </component>
 </module>

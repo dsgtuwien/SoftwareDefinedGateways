@@ -2,6 +2,7 @@ package at.ac.tuwien.infosys.g2021.intf;
 
 import at.ac.tuwien.infosys.g2021.common.BufferClass;
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
+import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.DummyGathererConfiguration;
 import at.ac.tuwien.infosys.g2021.common.ScalingAdapterConfiguration;
@@ -100,7 +101,7 @@ public class DataPointTest {
     @Before
     public void setUp() throws Exception {
 
-        // We start a daemon, because some the test object may use some other
+        // We start a daemon, because the test object may use some other
         // components of a daemon.
         Daemon.main(new String[] {"-<unit-test>: don-t-exit-on-shutdown"});
 
@@ -141,7 +142,7 @@ public class DataPointTest {
         Daemon.get().stop();
     }
 
-    /** Querying buffer names by name. */
+    /** Test the initial state. */
     @Test
     public void testInitialState() {
 
@@ -377,9 +378,9 @@ public class DataPointTest {
         // Some notifications has been received
         assertEquals(BufferState.READY, newState);
         assertNotNull(newValue);
-        assertEquals("sensor", newValue.getBufferName());
+        assertEquals("actor", newValue.getBufferName());
         assertEquals(BufferState.READY, newValue.getState());
         assertNotNull(newValue.getValue());
-        assertEquals(10.5, newValue.getValue().doubleValue(), 1.0e-6);
+        assertEquals(10.0, newValue.getValue().doubleValue(), 1.0e-6);
     }
 }

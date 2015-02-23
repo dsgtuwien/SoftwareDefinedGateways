@@ -35,5 +35,15 @@ final public class DummyGathererConfiguration implements GathererConfiguration {
      */
     @Override
     public GathererClass kindOfGatherer() { return GathererClass.DUMMY; }
+
+    /**
+     * Is this buffer class supported by the gatherer?
+     *
+     * @param bufferClass the buffer class
+     *
+     * @return <tt>true</tt>, if this kind of buffer is supported by the gatherer
+     */
+    @Override
+    public boolean isBufferClassSupported(BufferClass bufferClass) { return true; }
 }
 

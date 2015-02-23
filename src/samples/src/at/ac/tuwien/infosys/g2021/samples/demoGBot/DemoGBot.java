@@ -2,6 +2,7 @@ package at.ac.tuwien.infosys.g2021.samples.demoGBot;
 
 import at.ac.tuwien.infosys.g2021.common.BufferClass;
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
+import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.LowpassAdapterConfiguration;
 import at.ac.tuwien.infosys.g2021.common.ScalingAdapterConfiguration;
@@ -9,7 +10,6 @@ import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.common.TestGathererConfiguration;
 import at.ac.tuwien.infosys.g2021.common.TriggeringAdapterConfiguration;
 import at.ac.tuwien.infosys.g2021.intf.AbstractDataPointObserverImplementation;
-import at.ac.tuwien.infosys.g2021.intf.BufferDescription;
 import at.ac.tuwien.infosys.g2021.intf.BufferManager;
 import at.ac.tuwien.infosys.g2021.intf.DataPoint;
 import java.text.DateFormat;
@@ -18,15 +18,16 @@ import java.util.Collection;
 import java.util.Date;
 
 /**
- * This is a very simple program which uses the GBot interface to log the states of all available buffers to the
- * console.
+ * This is a very simple GBot which uses the DataPoint to log the states of all available buffers to the console.
+ * The TestGatherer simulates port changes. Some Adapter-Chains are created. They format the generated values
+ * to a lot of nice but useless numbers using different buffer configurations.
  */
 public class DemoGBot extends Thread {
 
     private final static DateFormat format = new SimpleDateFormat("yyyy.MM.dd HH:mm:ss.SSS");
 
     // The data point
-    private DataPoint dataPoint;
+    private DataPoint dataPoint = null;
 
     /** This is an inner class, which implements the observer interface. */
     private class LoggingObserver extends AbstractDataPointObserverImplementation {
@@ -42,12 +43,19 @@ public class DemoGBot extends Thread {
         public void bufferChanged(DataPoint dataPoint, SimpleData oldOne, SimpleData newOne) {
 
             if (newOne.getBufferName().equals("lowpass")) {
-                System.out.printf("%s %5.2f     %3d     %5.1f       %2d%n",
-                                  format.format(new Date()),
-                                  dataPoint.get("raw").getValue().doubleValue(),
-                                  dataPoint.get("scaled").getValue().intValue(),
-                                  dataPoint.get("lowpass").getValue().doubleValue(),
-                                  dataPoint.get("trigger").getValue().intValue());
+                try {
+                    System.out.printf("%s %5.2f     %3d     %5.1f       %2d%n",
+                                      format.format(new Date()),
+                                      dataPoint.get("raw").getValue().doubleValue(),
+                                      dataPoint.get("scaled").getValue().intValue(),
+                                      dataPoint.get("lowpass").getValue().doubleValue(),
+                                      dataPoint.get("trigger").getValue().intValue());
+                }
+                catch (NullPointerException e) {
+                    // This exception is thrown, if at least one of the buffers is not ready.
+                    System.out.printf("%s ?????     ???     ?????        ?%n",
+                                      format.format(new Date()));
+                }
             }
         }
     }
@@ -138,7 +146,6 @@ public class DemoGBot extends Thread {
 
         try {
             DemoGBot demoGBot = new DemoGBot();
-
             demoGBot.start();
 
             try {

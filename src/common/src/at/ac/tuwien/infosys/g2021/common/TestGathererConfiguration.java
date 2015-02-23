@@ -15,7 +15,7 @@ final public class TestGathererConfiguration implements GathererConfiguration {
      * @return a hash code value for this object.
      */
     @Override
-    public int hashCode() { return 0; }
+    public int hashCode() { return 1; }
 
     /**
      * Indicates whether some other object is "equal to" this one.
@@ -38,5 +38,15 @@ final public class TestGathererConfiguration implements GathererConfiguration {
      */
     @Override
     public GathererClass kindOfGatherer() { return GathererClass.TEST; }
+
+    /**
+     * Is this buffer class supported by the gatherer?
+     *
+     * @param bufferClass the buffer class
+     *
+     * @return <tt>true</tt>, if this kind of buffer is supported by the gatherer
+     */
+    @Override
+    public boolean isBufferClassSupported(BufferClass bufferClass) { return true; }
 }
 

@@ -2,66 +2,26 @@ package at.ac.tuwien.infosys.g2021.common.communication;
 
 import at.ac.tuwien.infosys.g2021.common.BufferConfiguration;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.AcceptedTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferConfigurationTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferMetainfoTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.BufferNamesTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.DisconnectTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.EstablishTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetBufferConfigurationTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetImmediateTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.GetTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.Message;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ObjectFactory;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.PushTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersByMetainfoTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryBuffersByNameTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.QueryMetainfoTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.RejectedTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ReleaseBufferTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.SetBufferConfigurationTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.SetTag;
-import at.ac.tuwien.infosys.g2021.common.communication.jaxb.ShutdownTag;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
-import at.ac.tuwien.infosys.g2021.common.util.PanicError;
+import com.eclipsesource.json.JsonArray;
+import com.eclipsesource.json.JsonObject;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.Map;
 import java.util.logging.Logger;
-import javax.xml.datatype.DatatypeConfigurationException;
-import javax.xml.datatype.DatatypeFactory;
-import javax.xml.datatype.XMLGregorianCalendar;
 
 /** This class transforms a method interface into message objects and sends the message objects to the communication partner. */
 class MessageSender {
 
-    // The factory to create messages
-    private ObjectFactory objectFactory;
-
     // The connection to the peer
     private Connection connection;
-
-    // The calendars for sending date values
-    private DatatypeFactory dataTypeFactory;
-    private GregorianCalendar calendar;
 
     // The logger
     private final static Logger logger = Loggers.getLogger(MessageSender.class);
 
     /** Initialize an instance with no communication partner assigned. */
-    MessageSender() {
-
-        try {
-            objectFactory = new ObjectFactory();
-            dataTypeFactory = DatatypeFactory.newInstance();
-            calendar = new GregorianCalendar();
-        }
-        catch (DatatypeConfigurationException e) {
-            throw new PanicError(e);
-        }
-    }
+    MessageSender() {}
 
     /** Initialize an instance and assigns a connection to it. */
     MessageSender(Connection c) {
@@ -98,15 +58,15 @@ class MessageSender {
     /**
      * Sending a Message object over the connection and handle logging.
      *
-     * @param name    the name of the message in the log
      * @param message the message
      *
      * @throws IOException if the send operation fails
      */
-    private void sendMessage(String name, Message message) throws IOException {
+    private void sendMessage(JsonObject message) throws IOException {
 
-        connection.send(message);
-        logger.fine(String.format("The message '%s' has been sent over the connection #%d.", name, connection.getId()));
+        JsonInterface json = new JsonInterface();
+        String msg = json.stringFromJSON(message);
+        connection.send(msg);
     }
 
     /**
@@ -118,13 +78,14 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        EstablishTag establishTag = objectFactory.createEstablishTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.VERSION, CommunicationSettings.version());
 
-        establishTag.setVersion(CommunicationSettings.version());
-        message.setEstablish(establishTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.ESTABLISH);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("establish(%d)", CommunicationSettings.version()), message);
+        sendMessage(message);
     }
 
     /**
@@ -136,11 +97,11 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        AcceptedTag acceptedTag = objectFactory.createAcceptedTag();
-        message.setAccepted(acceptedTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.ACCEPTED);
+        message.add(JsonInterface.ARGUMENTS, new JsonObject());
 
-        sendMessage("accepted()", message);
+        sendMessage(message);
     }
 
     /**
@@ -154,13 +115,14 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        RejectedTag rejectedTag = objectFactory.createRejectedTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.REASON, reason);
 
-        rejectedTag.setReason(reason);
-        message.setRejected(rejectedTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.REJECTED);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("rejected(%s)", reason), message);
+        sendMessage(message);
     }
 
     /**
@@ -172,11 +134,11 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        DisconnectTag disconnectTag = objectFactory.createDisconnectTag();
-        message.setDisconnect(disconnectTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.DISCONNECT);
+        message.add(JsonInterface.ARGUMENTS, new JsonObject());
 
-        sendMessage("disconnect()", message);
+        sendMessage(message);
     }
 
     /**
@@ -188,11 +150,11 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        ShutdownTag shutdownTag = objectFactory.createShutdownTag();
-        message.setShutdown(shutdownTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.SHUTDOWN);
+        message.add(JsonInterface.ARGUMENTS, new JsonObject());
 
-        sendMessage("shutdown()", message);
+        sendMessage(message);
     }
 
     /**
@@ -206,13 +168,14 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        QueryBuffersByNameTag queryBuffersTag = objectFactory.createQueryBuffersByNameTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, name);
 
-        queryBuffersTag.setName(name);
-        message.setQueryBuffersByName(queryBuffersTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.QUERY_BUFFER_BY_NAME);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("queryBuffersByName(%s)", name), message);
+        sendMessage(message);
     }
 
     /**
@@ -227,14 +190,15 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        QueryBuffersByMetainfoTag queryBuffersTag = objectFactory.createQueryBuffersByMetainfoTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.TOPIC, topic);
+        arguments.add(JsonInterface.METAINFO, metainfoPattern);
 
-        queryBuffersTag.setTopic(topic);
-        queryBuffersTag.setMetainfo(metainfoPattern);
-        message.setQueryBuffersByMetainfo(queryBuffersTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.QUERY_BUFFER_BY_METAINFO);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("queryBuffersByMetainfo(%s, %s)", topic, metainfoPattern), message);
+        sendMessage(message);
     }
 
     /**
@@ -248,13 +212,16 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        BufferNamesTag bufferNamesTag = objectFactory.createBufferNamesTag();
+        JsonObject arguments = new JsonObject();
+        JsonArray nameArray = new JsonArray();
+        for (String n : names) nameArray.add(n);
+        arguments.add(JsonInterface.NAME, nameArray);
 
-        bufferNamesTag.getName().addAll(names);
-        message.setBufferNames(bufferNamesTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.BUFFER_NAMES);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("bufferNames(%d entries)", names.size()), message);
+        sendMessage(message);
     }
 
     /**
@@ -268,37 +235,41 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        QueryMetainfoTag queryMetainfoTag = objectFactory.createQueryMetainfoTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, bufferName);
 
-        queryMetainfoTag.setName(bufferName);
-        message.setQueryMetainfo(queryMetainfoTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.QUERY_METAINFO);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("queryMetainfo(%s)", bufferName), message);
+        sendMessage(message);
     }
 
     /**
      * Sends a "bufferMetaInfo" message to the communication partner.
      *
-     * @param bufferName the name of the buffer
-     * @param metainfo   the assigned meta info
+     * @param bufferName       the name of the buffer
+     * @param isHardwareBuffer represents this buffer a hardware port and cannot be modified or deleted
+     * @param metainfo         the assigned meta info
      *
      * @throws IOException if the send operation fails
      */
-    void bufferMetainfo(String bufferName, Map<String, String> metainfo) throws IOException {
+    void bufferMetainfo(String bufferName, boolean isHardwareBuffer, Map<String, String> metainfo) throws IOException {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        JAXBInterface jaxb = new JAXBInterface();
-        BufferMetainfoTag bufferMetainfoTag = objectFactory.createBufferMetainfoTag();
+        JsonObject arguments = new JsonObject();
+        JsonInterface json = new JsonInterface();
 
-        bufferMetainfoTag.setName(bufferName);
-        jaxb.metainfoToXML(metainfo, bufferMetainfoTag.getMetainfo());
+        arguments.add(JsonInterface.NAME, bufferName);
+        arguments.add(JsonInterface.IS_HARDWARE, isHardwareBuffer);
+        arguments.add(JsonInterface.METAINFO, json.metainfoToJSON(metainfo));
 
-        message.setBufferMetainfo(bufferMetainfoTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.BUFFER_METAINFO);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("bufferMetainfo(%s, %d entries)", bufferName, metainfo.size()), message);
+        sendMessage(message);
     }
 
     /**
@@ -312,13 +283,16 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        JAXBInterface jaxb = new JAXBInterface();
-        BufferConfigurationTag bufferConfigurationTag = jaxb.configurationToXML(configuration);
+        JsonObject arguments = new JsonObject();
+        JsonInterface json = new JsonInterface();
 
-        message.setBufferConfiguration(bufferConfigurationTag);
+        arguments.add(JsonInterface.CONFIGURATION, json.configurationToJSON(configuration));
 
-        sendMessage("bufferConfiguration()", message);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.BUFFER_CONFIGURATION);
+        message.add(JsonInterface.ARGUMENTS, arguments);
+
+        sendMessage(message);
     }
 
     /**
@@ -332,14 +306,14 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        GetBufferConfigurationTag getBufferConfigurationTag = objectFactory.createGetBufferConfigurationTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, bufferName);
 
-        getBufferConfigurationTag.setName(bufferName);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.GET_BUFFER_CONFIGURATION);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        message.setGetBufferConfiguration(getBufferConfigurationTag);
-
-        sendMessage(String.format("getBufferConfiguration(%s)", bufferName), message);
+        sendMessage(message);
     }
 
     /**
@@ -355,18 +329,18 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        JAXBInterface jaxb = new JAXBInterface();
-        SetBufferConfigurationTag setBufferConfigurationTag = objectFactory.createSetBufferConfigurationTag();
+        JsonInterface json = new JsonInterface();
 
-        setBufferConfigurationTag.setName(bufferName);
-        setBufferConfigurationTag.setCreate(createAllowed);
-        setBufferConfigurationTag.setBufferConfiguration(jaxb.configurationToXML(configuration));
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, bufferName);
+        arguments.add(JsonInterface.CREATE, createAllowed);
+        arguments.add(JsonInterface.CONFIGURATION, json.configurationToJSON(configuration));
 
-        message.setSetBufferConfiguration(setBufferConfigurationTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.SET_BUFFER_CONFIGURATION);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("setBufferConfiguration(%s, configuration, %s)", bufferName, Boolean.valueOf(createAllowed).toString()),
-                    message);
+        sendMessage(message);
     }
 
     /**
@@ -380,14 +354,14 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        ReleaseBufferTag releaseBufferTag = objectFactory.createReleaseBufferTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, bufferName);
 
-        releaseBufferTag.setName(bufferName);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.RELEASE_BUFFER);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        message.setReleaseBuffer(releaseBufferTag);
-
-        sendMessage(String.format("releaseBuffer(%s)", bufferName), message);
+        sendMessage(message);
     }
 
     /**
@@ -401,13 +375,14 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        GetImmediateTag getImmediateTag = objectFactory.createGetImmediateTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, bufferName);
 
-        getImmediateTag.setName(bufferName);
-        message.setGetImmediate(getImmediateTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.GET_IMMEDIATE);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("getImmediate(%s)", bufferName), message);
+        sendMessage(message);
     }
 
     /**
@@ -421,13 +396,14 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        GetTag getTag = objectFactory.createGetTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, bufferName);
 
-        getTag.setName(bufferName);
-        message.setGet(getTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.GET);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("get(%s)", bufferName), message);
+        sendMessage(message);
     }
 
     /**
@@ -442,14 +418,15 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        SetTag setTag = objectFactory.createSetTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, bufferName);
+        arguments.add(JsonInterface.VALUE, value);
 
-        setTag.setName(bufferName);
-        setTag.setValue(value);
-        message.setSet(setTag);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.SET);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        sendMessage(String.format("set(%s, %g)", bufferName, value), message);
+        sendMessage(message);
     }
 
     /**
@@ -481,23 +458,20 @@ class MessageSender {
 
         checkConnection();
 
-        Message message = objectFactory.createMessage();
-        PushTag pushTag = objectFactory.createPushTag();
+        JsonObject arguments = new JsonObject();
+        arguments.add(JsonInterface.NAME, bufferName);
+        arguments.add(JsonInterface.TIMESTAMP, timestamp.getTime());
+        arguments.add(JsonInterface.STATE, state);
+        if (value != null) arguments.add(JsonInterface.VALUE, value);
+        arguments.add(JsonInterface.SPONTANEOUS, spontaneous);
 
-        calendar.setTime(timestamp);
-        XMLGregorianCalendar at = dataTypeFactory.newXMLGregorianCalendar(calendar);
+        JsonObject message = new JsonObject();
+        message.add(JsonInterface.TYPE, JsonInterface.PUSH);
+        message.add(JsonInterface.ARGUMENTS, arguments);
 
-        pushTag.setName(bufferName);
-        pushTag.setState(state);
-        pushTag.setValue(value);
-        pushTag.setTimestamp(at);
-        pushTag.setSpontaneous(spontaneous);
-
-        message.setPush(pushTag);
-
-        if (value == null) sendMessage(String.format("push(%s, %tc, %s, null)", bufferName, timestamp, state), message);
-        else sendMessage(String.format("push(%s, %tc, %s, %g)", bufferName, timestamp, state, value), message);
+        sendMessage(message);
     }
 }
+
 
 

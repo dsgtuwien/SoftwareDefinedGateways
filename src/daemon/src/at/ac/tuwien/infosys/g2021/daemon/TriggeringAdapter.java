@@ -7,10 +7,10 @@ import at.ac.tuwien.infosys.g2021.common.TriggeringAdapterConfiguration;
 /**
  * A triggering adapter toggle between the two output values "lowerOutput" and "upperOutput". The upper and the lower
  * input threshold values ("lowerThreshold" and "upperThreshold") and the output values are configuration items.
- * <p/>
+ * <p>
  * If "upperThreshold" is lower than the "lowerThreshold", this adapter works as comparator. The input value is
  * compared against "lowerThreshold" and the configuration item "upperThreshold" is ignored.
- * <p/>
+ * <p>
  * "upperOutput" may be smaller than "lowerOutput". In this way an inverting trigger is configured.
  */
 class TriggeringAdapter extends Adapter {

@@ -1,0 +1,243 @@
+<!-- This is the projects build process. -->
+
+<project name="G2021" basedir="." default="all">
+
+    <!-- version information -->
+    <property name="jdk-version" value="1.8"/>
+
+    <!-- directory structure -->
+    <property name="root-dir" value="${basedir}"/>
+    <property name="common-dir" value="${root-dir}/common"/>
+    <property name="artifacts-dir" value="${root-dir}/artifacts"/>
+    <property name="daemon-dir" value="${root-dir}/daemon"/>
+    <property name="interface-dir" value="${root-dir}/interface"/>
+    <property name="samples-dir" value="${root-dir}/samples"/>
+    <property name="doc-dir" value="${root-dir}/doc"/>
+    <property name="lib-dir" value="${root-dir}/lib"/>
+    <property name="tmp-dir" value="${root-dir}/tmp"/>
+
+    <!-- the source subdirectories  -->
+    <property name="java-src" value="src"/>
+    <property name="java-resources" value="src"/>
+    <property name="test-src" value="test"/>
+    <property name="test-resources" value="test"/>
+
+    <!-- external libraries -->
+    <fileset id="third-party-libraries" dir="${lib-dir}">
+        <exclude name="**/*doc.*"/>
+        <exclude name="**/*sources.*"/>
+        <exclude name="**/*junit*.*"/>
+    </fileset>
+
+    <!-- creates an empty build directory structure -->
+    <macrodef name="prepare-build-directory">
+        <sequential>
+            <delete dir="${tmp-dir}" failonerror="false"/>
+            <mkdir dir="${tmp-dir}/src"/>
+            <mkdir dir="${tmp-dir}/classes"/>
+        </sequential>
+    </macrodef>
+
+    <!-- copy java sources to the build directory -->
+    <macrodef name="copy-java-build-sources">
+        <attribute name="basedir"/>
+        <sequential>
+            <copy todir="${tmp-dir}/src" overwrite="true">
+                <fileset dir="@{basedir}/${java-src}">
+                    <include name="**/*.java"/>
+                </fileset>
+            </copy>
+            <copy todir="${tmp-dir}/classes" overwrite="true">
+                <fileset dir="@{basedir}/${java-resources}">
+                    <include name="**/*.*"/>
+                    <exclude name="**/*.java"/>
+                </fileset>
+            </copy>
+        </sequential>
+    </macrodef>
+
+    <!-- compile the java sources -->
+    <macrodef name="compile-build">
+        <sequential>
+            <javac fork="yes"
+                   deprecation="yes"
+                   target="${jdk-version}"
+                   source="${jdk-version}"
+                   debug="no"
+                   srcdir="${tmp-dir}/src"
+                   destdir="${tmp-dir}/classes"
+                   includeAntRuntime="false">
+                <classpath>
+                    <fileset refid="third-party-libraries"/>
+                </classpath>
+            </javac>
+        </sequential>
+    </macrodef>
+
+    <!-- deletes the build directories -->
+    <macrodef name="remove-build-directory">
+        <sequential>
+            <delete dir="${tmp-dir}" failonerror="false"/>
+        </sequential>
+    </macrodef>
+
+    <!-- initialize the build environment -->
+    <target name="init">
+        <tstamp>
+            <format property="build-date" pattern="yyyy.MM.dd" locale="en"/>
+        </tstamp>
+    </target>
+
+    <!-- deleting all generated files -->
+    <target name="clean" depends="init">
+
+        <remove-build-directory/>
+
+        <delete dir="${artifacts-dir}" failonerror="false"/>
+        <delete dir="${doc-dir}/api" failonerror="false"/>
+    </target>
+
+    <!-- building the daemon -->
+    <target name="build-daemon" depends="init">
+
+        <prepare-build-directory/>
+
+        <!-- copy all necessary sources -->
+        <copy-java-build-sources basedir="${common-dir}"/>
+        <copy-java-build-sources basedir="${daemon-dir}"/>
+
+        <!-- compile it -->
+        <compile-build/>
+
+        <!-- make the archive -->
+        <jar destfile="${artifacts-dir}/G2021Daemon.jar" duplicate="fail">
+            <manifest>
+                <attribute name="Class-Path" value="minimal-json-0.9.1.jar pi4j-core.jar"/>
+                <attribute name="Main-Class" value="at.ac.tuwien.infosys.g2021.daemon.Daemon"/>
+            </manifest>
+            <fileset dir="${tmp-dir}/classes"/>
+        </jar>
+
+        <!-- clean up -->
+        <remove-build-directory/>
+    </target>
+
+    <!-- building the interface -->
+    <target name="build-interface" depends="init">
+
+        <prepare-build-directory/>
+
+        <!-- copy all necessary sources -->
+        <copy-java-build-sources basedir="${common-dir}"/>
+        <copy-java-build-sources basedir="${interface-dir}"/>
+
+        <!-- compile it -->
+        <compile-build/>
+
+        <!-- make the archive -->
+        <jar destfile="${artifacts-dir}/G2021Interface.jar" duplicate="fail">
+            <fileset dir="${tmp-dir}/classes"/>
+        </jar>
+
+        <!-- clean up -->
+        <remove-build-directory/>
+    </target>
+
+    <!-- building the demo GBot -->
+    <target name="build-demo-gbot" depends="init">
+
+        <prepare-build-directory/>
+
+        <!-- copy all necessary sources -->
+        <copy-java-build-sources basedir="${common-dir}"/>
+        <copy-java-build-sources basedir="${interface-dir}"/>
+        <copy-java-build-sources basedir="${samples-dir}"/>
+
+        <!-- compile it -->
+        <compile-build/>
+
+        <!-- make the archive -->
+        <jar destfile="${artifacts-dir}/G2021DemoGBot.jar" duplicate="fail">
+            <manifest>
+                <attribute name="Class-Path" value="minimal-json-0.9.1.jar"/>
+                <attribute name="Main-Class" value="at.ac.tuwien.infosys.g2021.samples.demoGBot.DemoGBot"/>
+            </manifest>
+            <fileset dir="${tmp-dir}/classes"/>
+        </jar>
+
+        <!-- clean up -->
+        <remove-build-directory/>
+    </target>
+
+    <!-- building the logging GBot -->
+    <target name="build-logging-gbot" depends="init">
+
+        <prepare-build-directory/>
+
+        <!-- copy all necessary sources -->
+        <copy-java-build-sources basedir="${common-dir}"/>
+        <copy-java-build-sources basedir="${interface-dir}"/>
+        <copy-java-build-sources basedir="${samples-dir}"/>
+
+        <!-- compile it -->
+        <compile-build/>
+
+        <!-- make the archive -->
+        <jar destfile="${artifacts-dir}/G2021LoggingGBot.jar" duplicate="fail">
+            <manifest>
+                <attribute name="Class-Path" value="minimal-json-0.9.1.jar"/>
+                <attribute name="Main-Class" value="at.ac.tuwien.infosys.g2021.samples.loggingGBot.LoggingGBot"/>
+            </manifest>
+            <fileset dir="${tmp-dir}/classes"/>
+        </jar>
+
+        <!-- clean up -->
+        <remove-build-directory/>
+    </target>
+
+    <!-- copy third party libraries -->
+    <target name="copy-third-party-libs" depends="init">
+        <copy todir="${artifacts-dir}" overwrite="true">
+            <fileset refid="third-party-libraries"/>
+        </copy>
+    </target>
+
+    <!-- generate javadoc -->
+    <target name="javadoc" depends="init">
+
+        <prepare-build-directory/>
+
+        <!-- copy all necessary sources -->
+        <copy-java-build-sources basedir="${common-dir}"/>
+        <copy-java-build-sources basedir="${interface-dir}"/>
+
+        <!-- make the api doc -->
+        <javadoc packagenames="at.ac.tuwien.infosys.g2021.common,at.ac.tuwien.infosys.g2021.intf"
+                 excludepackagenames="at.ac.tuwien.infosys.g2021.common.communication"
+                 sourcepath="${tmp-dir}/src"
+                 defaultexcludes="yes"
+                 destdir="${doc-dir}/api"
+                 author="false"
+                 version="false"
+                 use="true"
+                 notree="false"
+                 protected="true"
+                 private="false"
+                 package="false"
+                 windowtitle="G2021 - Software defined Gateway"
+                 charset="UTF-8">
+            <classpath>
+                <fileset refid="third-party-libraries"/>
+            </classpath>
+        </javadoc>
+
+        <!-- clean up -->
+        <remove-build-directory/>
+    </target>
+
+    <!-- building all the files -->
+    <target name="all"
+            depends="clean, build-daemon, build-interface, build-demo-gbot, build-logging-gbot, copy-third-party-libs, javadoc"/>
+</project>
+
+

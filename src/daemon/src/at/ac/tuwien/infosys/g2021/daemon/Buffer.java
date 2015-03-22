@@ -292,6 +292,7 @@ class Buffer extends ValueChangeProducer {
      * Puts the current value into the gatherer of an actor.
      *
      * @param value the new buffer value
+     * @return successful
      */
     boolean put(Number value) {
 

@@ -10,7 +10,9 @@ import at.ac.tuwien.infosys.g2021.common.SimpleData;
  */
 class FilteringAdapter extends Adapter {
 
-    /** Initialization */
+    /** Initialization
+     * @param configuration The configuration
+     */
     FilteringAdapter(FilteringAdapterConfiguration configuration) { super(configuration); }
 
     /**

@@ -15,7 +15,9 @@ import at.ac.tuwien.infosys.g2021.common.TriggeringAdapterConfiguration;
  */
 class TriggeringAdapter extends Adapter {
 
-    /** Initialization */
+    /** Initialization
+     * @param configuration The configuration
+     */
     TriggeringAdapter(TriggeringAdapterConfiguration configuration) { super(configuration); }
 
     /**

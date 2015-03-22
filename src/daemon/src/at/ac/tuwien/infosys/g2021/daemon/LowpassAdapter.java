@@ -34,7 +34,9 @@ class LowpassAdapter extends Adapter {
     // The current input value
     private SimpleData currentInputValue;
 
-    /** Initialization */
+    /** Initialization
+     * @param configuration The configuration
+     */
     LowpassAdapter(LowpassAdapterConfiguration configuration) {
 
         super(configuration);

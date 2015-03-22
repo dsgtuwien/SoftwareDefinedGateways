@@ -14,7 +14,9 @@ import at.ac.tuwien.infosys.g2021.common.SimpleData;
  */
 class ScalingAdapter extends Adapter {
 
-    /** Initialization */
+    /** Initialization
+     * @param configuration The configuration
+     */
     ScalingAdapter(ScalingAdapterConfiguration configuration) { super(configuration); }
 
     /**

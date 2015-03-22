@@ -9,12 +9,16 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Map;
 
 /**
- * This GBot looks for all available Buffers and print there names to the console.
- * Next the Buffers DI31, DI32, DO51 and DO52 are assigned.
+ * This GBot looks for all available Buffers and print there names to the console.<br />
+ *
+ * Next the buffers DI31, DI32, DO51 and DO52 are assigned - if possible.
+ * Assuming, the are available, a sw-connection between DI31 and DO51 as well as DI32 and DO52 is processed:
  * When DI31 changes its state, DO51 will be changed - a Switch turns on a LED
  * When DI32 changes its state, DO52 will be changed.
+ * If a buffer doesn't exist, the sw-connection is broken and the DO will not changed.
  *
  * The changes are recognized by an Observer. The GBot itself is waiting to be triggered by the DataPoint.
  */
@@ -28,6 +32,10 @@ public class LedOnOffGBot extends Thread {
     private final static String LED1 = "DO51"; // Green LED
     private final static String LED2 = "DO52"; // Red   LED
 
+    private static boolean sw1Exists  = false; // succsessful creation of the buffer to switch1
+    private static boolean sw2Exists  = false; // succsessful creation of the buffer to switch2
+    private static boolean led1Exists = false; // succsessful creation of the buffer to LED1
+    private static boolean led2Exists = false; // succsessful creation of the buffer to LED2
 
 
     /**
@@ -92,12 +100,11 @@ public class LedOnOffGBot extends Thread {
                     }
                 }
             }
-
             // Now do the main work - turn on or off the LED
-            if(       newOne.getBufferName().equals( Switch1 ) ) {
+            if(       newOne.getBufferName().equals( Switch1 ) && led1Exists ) {
                 dataPoint.set( LED1, newOne.getValue().doubleValue() == on ? on : off );
             }
-            else if ( newOne.getBufferName().equals( Switch2 ) ) {
+            else if ( newOne.getBufferName().equals( Switch2 ) && led2Exists ) {
                 dataPoint.set( LED2, newOne.getValue().doubleValue() == on ? on : off );
             }
         }
@@ -119,9 +126,15 @@ public class LedOnOffGBot extends Thread {
                 // Now we can query all available buffers
                 Collection<BufferDescription> availableBuffers = dataPoint.queryBuffersByName( ".*" );
                 if( availableBuffers.size() > 0 ) {
+
                     // Print the Buffernames to the console
                     for( BufferDescription bufferDescription : availableBuffers ) {
-                        System.out.println(" " + bufferDescription.getBufferName());
+                        System.out.print(" " + bufferDescription.getBufferName());
+                        Map<String,String> metaInfo = bufferDescription.getBufferMetainfo();
+                        for( String key : metaInfo.keySet() ) {
+                            System.out.print( "  " + key + "=" + metaInfo.get( key ) );
+                        }
+                        System.out.println( "" );
                     }
                 }
                 else {     // There are no buffers available. We will log a short message and terminate the thread.
@@ -129,15 +142,18 @@ public class LedOnOffGBot extends Thread {
                 }
 
                 // All required buffers will be assigned.
-
-                dataPoint.assign( Switch1 );
-                dataPoint.assign( Switch2 );
-                dataPoint.assign( LED1 );
-                dataPoint.assign( LED2 );
+                try { dataPoint.assign( Switch1 ); sw1Exists = true; }
+                catch( IllegalArgumentException iae ) { System.err.println( iae.getMessage() ); }
+                try { dataPoint.assign( Switch2 ); sw2Exists = true; }
+                catch( IllegalArgumentException iae ) { System.err.println( iae.getMessage() ); }
+                try { dataPoint.assign( LED1 ); led1Exists = true; }
+                catch( IllegalArgumentException iae ) { System.err.println( iae.getMessage() ); }
+                try { dataPoint.assign( LED2 ); led2Exists = true; }
+                catch( IllegalArgumentException iae ) { System.err.println( iae.getMessage() ); }
 
                 // Set the LEDs to initial values
-                dataPoint.set( LED1, dataPoint.get( Switch1 ).getValue().doubleValue() == on ? on : off);
-                dataPoint.set( LED2, dataPoint.get( Switch2 ).getValue().doubleValue() == on ? on : off);
+                if( sw1Exists && led1Exists ) { dataPoint.set( LED1, dataPoint.get( Switch1 ).getValue().doubleValue() == on ? on : off); }
+                if( sw2Exists && led2Exists ) { dataPoint.set( LED2, dataPoint.get( Switch2 ).getValue().doubleValue() == on ? on : off); }
 
                 // Changes on the data point will be logged with our observer
                 dataPoint.addDataPointObserver( new LedOnOffObserver() );

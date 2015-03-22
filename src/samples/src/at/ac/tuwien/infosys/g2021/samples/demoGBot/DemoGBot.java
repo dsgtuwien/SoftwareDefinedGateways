@@ -18,9 +18,8 @@ import java.util.Collection;
 import java.util.Date;
 
 /**
- * This is a very simple GBot which uses the DataPoint to log the states of all available buffers to the console.
- * The TestGatherer simulates port changes. Some Adapter-Chains are created. They format the generated values
- * to a lot of nice but useless numbers using different buffer configurations.
+ * This is a very simple program which uses the GBot interface to log the states of all available buffers to the
+ * console.
  */
 public class DemoGBot extends Thread {
 

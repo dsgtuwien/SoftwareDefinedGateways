@@ -6,7 +6,9 @@ import at.ac.tuwien.infosys.g2021.common.SimpleData;
 /** This Adapter does no conversion. */
 class DummyAdapter extends Adapter {
 
-    /** Initialization */
+    /** Initialization
+     * @param configuration The configuration
+     */
     DummyAdapter(DummyAdapterConfiguration configuration) { super(configuration); }
 
     /**

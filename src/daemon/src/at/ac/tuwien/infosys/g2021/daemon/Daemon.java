@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 public class Daemon {
 
     // The version of the daemon:
-    private final static String VERSION = "1.0.0";
+    private final static String VERSION = "1.0.1";
 
     // The logger.
     private final static Logger logger = Loggers.getLogger(Daemon.class);
@@ -350,7 +350,9 @@ public class Daemon {
         logger.info("The G2021 buffer daemon is now up and running.");
     }
 
-    /** Stops the daemon. This is a request for a regular shutdown. */
+    /** Stops the daemon. This is a request for a regular shutdown.
+     * @param exitCode the exit code
+     */
     private void stop(int exitCode) {
 
         // We disable the uncaught exception handler, because we are already shutting down
@@ -522,7 +524,10 @@ public class Daemon {
         }
     }
 
-    /** This method stops a running daemon. */
+    /** This method stops a running daemon.
+     * @return <tt>true</tt>: the shutdown was successful<br>
+     *     <tt>false</tt>: not successful
+     */
     private boolean shutdownRemoteDaemon() {
 
         ClientEndpoint endpoint = ClientEndpoint.get();

@@ -36,7 +36,9 @@ class ValueQueue extends LinkedBlockingQueue<SimpleData> {
         // The queue
         private ValueQueue queue;
 
-        /** Initialization. */
+        /** Initialization.
+         * @param queue The new queue
+         * */
         BlockingSplitIterator(ValueQueue queue) { this.queue = queue; }
 
         /**

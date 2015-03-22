@@ -141,10 +141,15 @@ public class UnitTestDriverImplementation implements HardwareDriverInterface {
     @Override
     public void release() {}
 
-    /** Returns a port value. */
+    /** Returns a port value.
+     * @param port For this port the value is desired.
+     * @return the desired value.
+     * */
     public SimpleData getPortValue(String port) { return values.get(port); }
 
-    /** Returns a port value. */
+    /** Returns a port value.
+     * @param port One of <tt>AI</tt> or <tt>AO</tt> or <tt>DI</tt> or <tt>DO</tt>.
+     * */
     public void disturbPort(String port) {
 
         switch (port) {

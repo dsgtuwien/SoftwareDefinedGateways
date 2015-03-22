@@ -8,17 +8,21 @@ import at.ac.tuwien.infosys.g2021.common.communication.ValueChangeObserver;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.WeakHashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -48,7 +52,7 @@ import java.util.stream.Stream;
  *
  *    // And then we assign the buffers to the data point
  *    dataPoint.assign(myFavoriteBuffer);
- *    dataPoint.assign(anotherPrettyBuffer, false);
+ *    dataPoint.assign(anotherPrettyBuffer);
  *    ...
  *
  *    // A short time later, the state should be BufferState.READY and we can work with buffers.
@@ -117,6 +121,7 @@ public class DataPoint {
             observers = new CopyOnWriteArrayList<>();
             streams = new WeakHashMap<>();
             state = ClientEndpoint.get().isConnected() ? BufferState.INITIALIZING : BufferState.ISOLATED;
+            callbacks = Collections.synchronizedMap(new HashMap<>());
         }
 
         /** Opens a connection to the daemon und registers this data point. */
@@ -256,6 +261,8 @@ public class DataPoint {
 
             // No more notification will be sent
             observers.clear();
+            callbacks.values().forEach(Task::stop);
+            callbacks.clear();
 
             super.release();
         }
@@ -834,6 +841,80 @@ public class DataPoint {
      * @return a stream of value changes
      */
     public Stream<SimpleData> getStream() { return implementation.getStream(); }
+
+    // *** CALLBACKS ***
+    private class Task {
+
+        private long delay;
+        private Timer timer;
+        private SDGCallback callback;
+
+        Task(long d, SDGCallback cb) {
+
+            super();
+
+            delay = d;
+            callback = cb;
+            start();
+        }
+
+        void start() {
+
+            timer = new Timer(true);
+            timer.schedule(new TimerTask() {
+                public void run() {
+                    stop();
+                    start();
+                    try {
+                        callback.onTimeout(DataPoint.this, DataPoint.this.getAll());
+                    }
+                    catch (Exception e) {
+                        logger.log(Level.WARNING, "The callback '" + callback + "' has thrown an exception:", e);
+                    }
+                }
+            },
+                           delay);
+        }
+
+        void stop() { timer.cancel(); }
+    }
+
+    private Map<SDGCallback, Task> callbacks;
+
+    /**
+     * Adds SDGCallbacks to this data point. If some callbacks are already registered, the callbacks are removed and
+     * scheduled with the new delay.
+     *
+     * @param delay the delay in milliseconds. At least 100msec are assumed.
+     * @param cb    the callback
+     */
+    public void addCallback(long delay, SDGCallback... cb) {
+
+        if (cb != null) {
+            removeCallback(cb);
+            for (SDGCallback callback : cb) {
+                if (callback != null) callbacks.put(callback, new Task(Math.max(100L, delay), callback));
+            }
+        }
+    }
+
+    /**
+     * Removes SDGCallback from this data point. If some callbacks are not registered, the method has no effect for
+     * these callbacks.
+     *
+     * @param cb the callback
+     */
+    public void removeCallback(SDGCallback... cb) {
+
+        if (cb != null) {
+            for (SDGCallback callback : cb) {
+                if (callback != null) {
+                    Task t = callbacks.remove(callback);
+                    if (t != null) t.stop();
+                }
+            }
+        }
+    }
 }
 
 

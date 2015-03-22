@@ -5,48 +5,47 @@ import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.common.util.Loggers;
 import at.ac.tuwien.infosys.g2021.daemon.HardwareDriverInterface;
 import at.ac.tuwien.infosys.g2021.daemon.PortDescription;
+import com.eclipsesource.json.JsonObject;
+import com.eclipsesource.json.JsonValue;
 import com.pi4j.io.i2c.I2CBus;
 import com.pi4j.io.i2c.I2CFactory;
+
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.logging.Level;
+import java.util.*;
 import java.util.logging.Logger;
 
 /** This is a dummy implementation. It guarantees the existence of at least one usable driver on every hardware. */
 public class RaspberryPiI2CDemoHardwareDriverImplementation implements HardwareDriverInterface {
 
-    // The logger.
+    /** The logger */
     private final static Logger logger = Loggers.getLogger(RaspberryPiI2CDemoHardwareDriverImplementation.class);
 
-    // An object for thread synchronization
+    /** An object for thread synchronization */
     private final Object lock;
 
-    // This is the set of the available chips.
-    private Map<ChipSet, Chip> chips;
+    /** All defined and available sensors/actors - ports */
+    private HashMap<String,PortRpiI2c> allPorts = new HashMap<String,PortRpiI2c>();
 
-    // The selection of the adc multiplexer.
+    /** The selection of the adc multiplexer. */
     private int currentMultiplexerSetting;
 
     /** Creating the driver instance. */
     public RaspberryPiI2CDemoHardwareDriverImplementation() {
-
         lock = new Object();
-        chips = new HashMap<>();
-        currentMultiplexerSetting = -1;
     }
 
+
+    /* *** g e t  N a m e ***/
     /**
      * Returns the name of the driver for logging purposes.
-     *
-     * @return the name of the driver
      */
     @Override
-    public String getName() { return "Demo Driver for Raspberry Pi (I\u00B2C interface)"; }
+    public String getName() { return "Driver for Raspberry Pi I2C interface"; }
 
+
+    /* *** i s  S u i t a b l e ***/
     /**
      * Is this a suitable hardware driver and can this driver work with the current hardware?
      * <p>
@@ -59,135 +58,137 @@ public class RaspberryPiI2CDemoHardwareDriverImplementation implements HardwareD
     public boolean isSuitable() {
 
         try {
-            // This call throws an exception if there is no device.
-            I2CFactory.getInstance(I2CBus.BUS_1);
+            I2CBus i2cBus = I2CFactory.getInstance( I2CBus.BUS_1 );
             return true;
         }
-        catch (Throwable e) {
+        catch (Throwable e) {  // This call throws an exception if there is no device.
             return false;
         }
     }
 
+
+    /* *** i s  B e s t  C h o i c e ***/
     /**
-     * Is this hardware driver is the best choice for this hardware? If this method returns <tt>false</tt> and another
+     * Is this driver the best choice for this hardware? If this method returns <tt>false</tt> and another
      * driver is also suitable, the other driver will be used.
-     *
-     * @return <tt>true</tt>, if this driver is the best choice
      */
     @Override
     public boolean isBestChoice() { return false; }
 
-    /** This method is called, after creating all necessary instances. */
+
+    /* *** i n i t i a l i z e ***/
+    /**
+     * All chips (defined in ChipSet) are checked for reachability.
+     * If a chip is reachable, it is referenced in 'chips'.
+     *
+     * This method is called, after creating all necessary instances.
+     */
     @Override
-    public void initialize() {
+    public void initialize() {}
 
-        synchronized (lock) {
 
-            // Multiple initializations are ignored.
-            if (chips.size() == 0) {
-
-                try {
-                    I2CBus bus = I2CFactory.getInstance(I2CBus.BUS_1);
-
-                    for (ChipSet chipSetEntry : ChipSet.values()) {
-
-                        String name = chipSetEntry.name();
-                        Chip chip;
-
-                        if (chipSetEntry.isADC()) chip = new ADCChip(bus, chipSetEntry);
-                        else chip = new LatchChip(bus, chipSetEntry);
-
-                        // Is this chip exists, it can be used.
-                        if (selectADC(chipSetEntry.getMultiplexerValue()) && chip.exists()) {
-                            logger.config(String.format("The I\u00B2C device '%s' at address 0x%02X is available.", name, chip.getAddress()));
-                            chips.put(chipSetEntry, chip);
-                        }
-                    }
-
-                    // If there are no chips, we close the bus.
-                    if (chips.size() == 0) logger.warning("The I\u00B2C driver is initialized but useless. There are no I\u00B2C devices available.");
-                    else logger.info("The I\u00B2C driver is now initialized.");
-                }
-                catch (Exception e) {
-                    // if the allocation of the bus fails, we can return. There are no devices available.
-                    logger.log(Level.WARNING, "The initialization of the I\u00B2C driver failed:", e);
-                }
-            }
-        }
-    }
-
+    /* *** g e t  P o r t  C f g s ***/
     /**
-     * Set the multiplexer for the ADCs.
+     * Read the configuration of sensors and actors from configuration file 'portCfg.json',
+     * analyse it and create for each a PortCfg.
      *
-     * @param selection the multiplexer selection
-     *
-     * @return <tt>true</tt>, if the selection is ok
+     * @return All found and correct port configurations.
      */
-    private boolean selectADC(int selection) {
+    ArrayList<PortRpiI2c> getPortCfgs() {
 
-        if (selection >= 0 && currentMultiplexerSetting != selection && chips.containsKey(ChipSet.AIMUX)) {
-            try {
-                chips.get(ChipSet.AIMUX).write(selection);
-                logger.fine(String.format("The ADC multiplexer is set to '0x%02X'", selection));
-                currentMultiplexerSetting = selection;
-            }
-            catch (IOException e) {
-                // The multiplexer setting failed. We cannot select the chip.
-                return false;
-            }
+        ArrayList<PortRpiI2c> portCfgs = new ArrayList<PortRpiI2c>();
+        JsonObject jsonObj = null;
+        String cfgFileName = "portCfg.json";
+
+        // Read data from file.
+        try {
+            jsonObj = JsonObject.readFrom( new FileReader( cfgFileName ) );
+        }
+        catch( FileNotFoundException fnfe ) {
+            logger.config( "Config-File " + cfgFileName + " not found." );
+            System.exit( -31 );
+        }
+        catch( IOException ioe ) {
+            logger.config( "Config-File " + cfgFileName + " not readable." );
+            System.exit( -32 );
         }
 
-        return true;
-    }
-
-    /**
-     * Read the value of a chip.
-     *
-     * @param chip the chip from the set of chips
-     *
-     * @return the raw hardware value or null, if an error occurs
-     */
-    private Integer readRawValue(ChipSet chip) {
-
-        Integer result = null;
-
-        if (chips.containsKey(chip) && selectADC(chip.getMultiplexerValue())) {
-            try {
-                result = chips.get(chip).read();
-            }
-            catch (IOException e) {
-                // The chip is faulted, the result is well initialized.
+        // Read the port-configuration from JSON-object
+        try {
+            I2CBus i2cBus = I2CFactory.getInstance(I2CBus.BUS_1);
+            for( JsonValue value : jsonObj.get("portCfg").asArray() ) {
+                PortRpiI2c portCfg = new PortRpiI2c( value.asObject(), i2cBus );
+                if( portCfg.getName() != null ) { portCfgs.add( portCfg ); }
+                logger.fine( "PortCfg " + portCfg.getName() + portCfg.dump());
             }
         }
+        catch( IOException ioe ) {
+            logger.config( "\nI2C-Bus not available." );
+            System.exit(-58);
+        }
+        catch( NullPointerException npe ) {
+            logger.config( "\nCorrupt Config-File " + cfgFileName );
+            System.exit( -59 );
+        }
 
-        return result;
+        return portCfgs;
     }
 
+
+    /* *** g e t  P o r t s ***/
     /**
      * Returns the available ports and their properties.
-     *
      * @return the port properties
      */
     @Override
     public Collection<PortDescription> getPorts() {
 
+        // All found and active sensors/actors are collected here.
         Collection<PortDescription> result = new ArrayList<>();
 
-        for (PortSet portSetEntry : PortSet.values()) {
-            if (chips.containsKey(portSetEntry.fromChip())) {
+        try {
+            I2CBus i2cBus = I2CFactory.getInstance(I2CBus.BUS_1);
 
-                Map<String, String> metadata = new HashMap<>();
-                metadata.put("type", portSetEntry.portClass().name());
-                if (portSetEntry.unit() != null) metadata.put("unit", portSetEntry.unit());
+            // Find all defined Actors/Sensors
+            for (PortRpiI2c portCfg : getPortCfgs()) {
 
-                result.add(new PortDescription(portSetEntry.name(), portSetEntry.portClass(), metadata));
+                // The sensor/actor must be connected to the I2C-bus - otherwise this driver is not responsible for it.
+                if (!("I2C".equals((String) portCfg.getHwCfg().get("connection")))) continue;
+
+                // Check if the sensor/actor is active
+                if (!portCfg.getState()) continue;
+
+                System.out.println(portCfg.dump());
+
+                double r = 0;
+                byte[] b = null;
+                try {
+                    b = portCfg.getValue(i2cBus);       // read the bits from the i2c-device/chip
+                } catch (Exception e) {
+                    System.err.println( e.getMessage() );
+                    // e.printStackTrace();
+                    continue;
+                }
+                r = portCfg.bitWeighter(b);             // Weighting the bits
+                r = portCfg.linearizer(r);              // Now the linearisation - correction of the characteristic
+                r = portCfg.polynominizer(r);           // Polynom correction y = a0 + a1*r + a2*r^2 + ...
+                System.out.println(portCfg.getName() + "=" + r);
+
+                // All tests are successful -> keep this portCfg.
+                allPorts.put(portCfg.getName(), portCfg);
+                result.add(new PortDescription(portCfg.getName(), portCfg.getPortClass(), portCfg.getMetaInfo()));
             }
+            logger.config(String.format( "There are %d I\u00B2C ports known.", result.size()) );
         }
-
-        logger.config(String.format("There are %d I\u00B2C devices known.", result.size()));
+        catch( IOException ioe ) {
+            logger.config("I2C-Bus not available.");
+            System.exit( -61 );
+        }
         return result;
     }
 
+
+    /* *** g e t  A l l ***/
     /**
      * Returns the states and values of all available ports.
      *
@@ -197,43 +198,35 @@ public class RaspberryPiI2CDemoHardwareDriverImplementation implements HardwareD
     public Collection<SimpleData> getAll() {
 
         Collection<SimpleData> result = new ArrayList<>();
-        ChipSet lastChipRead = null;
-        Integer lastValueRead = null;
         Date now = new Date();
 
         synchronized (lock) {
-            for (PortSet portSetEntry : PortSet.values()) {
 
-                ChipSet chip = portSetEntry.fromChip();
-
-                if (chips.containsKey(chip)) {
-
-                    String name = portSetEntry.name();
-
-                    // Read the chip value if necessary
-                    if (lastChipRead != chip) {
-                        lastChipRead = chip;
-                        lastValueRead = readRawValue(chip);
-                    }
-
-                    // If there was a raise condition, the port is faulted!
-                    if (lastValueRead == null) {
-                        logger.fine(String.format("The I\u00B2C device '%s' is in faulted state.", name));
-                        result.add(new SimpleData(name, now, BufferState.FAULTED));
-                    }
-                    else {
-                        Number value = portSetEntry.rawValueToNumber(lastValueRead);
-
-                        logger.fine(String.format("The I\u00B2C device '%s' offers the value %.3f.", name, value.doubleValue()));
-                        result.add(new SimpleData(name, now, BufferState.READY, value));
+            try {
+                I2CBus i2cBus = I2CFactory.getInstance(I2CBus.BUS_1);
+                for (PortRpiI2c port : allPorts.values()) {
+                    try {
+                        byte[] b = port.getValue(i2cBus);
+                        double value = port.bitWeighter(b);
+                        value = port.linearizer(value);
+                        value = port.polynominizer(value);
+                        result.add(new SimpleData(port.getName(), now, BufferState.READY, value));
+                        logger.fine( port.getName() + "=" + value);
+                    } catch (Exception e) {
+                        result.add(new SimpleData(port.getName(), now, BufferState.FAULTED));
                     }
                 }
             }
+            catch(IOException ioe) {
+                logger.config("I2CBus not available.");
+                System.exit( -62 );
+            }
         }
-
         return result;
     }
 
+
+    /* *** s e t ***/
     /**
      * Sets the output of an actor.
      *
@@ -247,64 +240,26 @@ public class RaspberryPiI2CDemoHardwareDriverImplementation implements HardwareD
     @Override
     public boolean set(String port, Number value) throws UnsupportedOperationException {
 
+
         try {
-            PortSet portSetEntry = PortSet.valueOf(port);
-            ChipSet chip = portSetEntry.fromChip();
-
-            if (chips.containsKey(chip) && portSetEntry.portClass().isActor()) {
-
-                synchronized (lock) {
-
-                    // Read the chip value if necessary
-                    Integer read = readRawValue(chip);
-
-                    // If we can't read the chip, we also can't write to it
-                    if (read == null) {
-                        logger.fine(String.format("Reading I\u00B2C device '%s' failed.", port));
-                        return false;
-                    }
-
-                    try {
-                        Integer raw = portSetEntry.numberToRawValue(read, value);
-
-                        if (raw != null) {
-                            logger.fine(String.format("The I\u00B2C device '%s' is set to %d.", port, raw));
-                            chips.get(chip).write(raw);
-                            return true;
-                        }
-                        else {
-                            logger.fine(String.format("Setting I\u00B2C device '%s' failed.", port));
-                            return false;
-                        }
-                    }
-                    catch (IOException e) {
-                        logger.log(Level.FINE, String.format("Setting I\u00B2C device '%s' failed.", port), e);
-                        return false;
-                    }
-                }
-            }
-            else {
-                throw new UnsupportedOperationException("no suitable I\u00B2C device for set operation: " + port);
-            }
+            allPorts.get(port).setValue( I2CFactory.getInstance( I2CBus.BUS_1 ), value);
+            return true;
         }
-        catch (IllegalArgumentException e) {
-            throw new UnsupportedOperationException("no such I²C device: " + port, e);
+        catch( Exception e ) {
+            logger.config("Error while setting new value: " + e.getMessage());
+            return false;
         }
     }
 
+
+    /* *** s h u t d o w n ***/
     /** This method is called, whenever a shutdown sequence is initiated. */
     @Override
     public void shutdown() { release(); }
 
+
+    /* *** r e l e a s e ***/
     /** This method is called immediately after a shutdown, immediately before the process is stopped. */
     @Override
-    public void release() {
-
-        if (chips.size() > 0) {
-
-            // Now the chips are useless.
-            chips.clear();
-            logger.info("The I\u00B2C driver is closed now.");
-        }
-    }
+    public void release() {}
 }

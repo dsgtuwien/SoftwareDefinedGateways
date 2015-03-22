@@ -1,0 +1,120 @@
+{
+"portCfg" : [ 
+      { "name" : "DI31",  "portClass" : 1, "active" : true,
+	"metaInfo" : { "unit" : "1", "description" : "Switch 31", "position" : "top, first from left" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x22", "bitWeight" : "1,0,0,0,0,0,0,0" }
+	},
+
+      { "name" : "DI32",  "portClass" : 1, "active" : true,
+	"metaInfo" : { "unit" : "1", "description" : "Switch DI32", "position" : "top, second from left",
+			"installDate" : "2015-03-04", "comment" : "This switch is very important" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x22", "bitWeight" : "0,1,0,0,0,0,0,0" }
+	},
+
+      { "name" : "DI33",  "portClass" : 1, "active" : true,
+	"metaInfo" : { "unit" : "1", "description" : "Switch DI33" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x22", "bitWeight" : "0,0,1,0,0,0,0,0" }
+	},
+
+      { "name" : "DI34",  "portClass" : 1, "active" : true,
+	"metaInfo" : { "unit" : "1", "description" : "Switch DI34" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x22", "bitWeight" : "0,0,0,1,0,0,0,0" }
+	},
+
+      { "name" : "DI35",  "portClass" : 1, "active" : true,
+	"metaInfo" : { "unit" : "1", "description" : "Switch DI35" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x22", "bitWeight" : "0,0,0,0,1,0,0,0" }
+	},
+
+      { "name" : "DI36",  "portClass" : 1, "active" : true,
+	"metaInfo" : { "unit" : "1", "description" : "Switch DI36" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x22", "bitWeight" : "0,0,0,0,0,1,0,0" }
+	},
+
+      { "name" : "DO51",  "portClass" : 2, "active" : true,
+	"metaInfo" : { "unit" : "2", "description" : "LED green" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x38", "bitWeight" : "1,0,0,0,0,0,0,0" }
+	},
+
+      { "name" : "DO52",  "portClass" : 2, "active" : true,
+	"metaInfo" : { "unit" : "2", "description" : "LED red" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x38", "bitWeight" : "0,1,0,0,0,0,0,0" }
+	},
+
+      { "name" : "DO53",  "portClass" : 2, "active" : true,
+	"metaInfo" : { "unit" : "2", "description" : "LED green" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x38", "bitWeight" : "0,0,1,0,0,0,0,0" }
+	},
+
+      { "name" : "DO54",  "portClass" : 2, "active" : true,
+	"metaInfo" : { "unit" : "2", "description" : "LED amber" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x38", "bitWeight" : "0,0,0,1,0,0,0,0" }
+	},
+
+      { "name" : "DO55",  "portClass" : 2, "active" : true,
+	"metaInfo" : { "unit" : "2", "description" : "LED red" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x38", "bitWeight" : "0,0,0,0,1,0,0,0" }
+	},
+
+      { "name" : "DO56",  "portClass" : 2, "active" : true,
+	"metaInfo" : { "unit" : "2", "description" : "LED green" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x38", "bitWeight" : "0,0,0,0,0,1,0,0" }
+	},
+
+      { "name" : "DO57",  "portClass" : 2, "active" : true,
+	"metaInfo" : { "unit" : "2", "description" : "LED amber" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x38", "bitWeight" : "0,0,0,0,0,0,1,0" }
+	},
+
+      { "name" : "DO58",  "portClass" : 2, "active" : true,
+	"metaInfo" : { "unit" : "2", "description" : "LED red" },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x38", "bitWeight" : "0,0,0,0,0,0,0,1" }
+	},
+
+      { "name" : "AI11", "portClass" : 3, "active" : true,
+	"metaInfo" : { "unit" : "4", "description" : "AI11: 0..100%" },
+	"hwCfg" : { "connection" : "I2C", "i2cMuxAddr" : "0x70", "i2cMuxCmd" : "0x05", "i2cAddr" : "0x50", "bitWeight" : "16,32,64,128,0,0,0,0,0,0,0,0,1,2,4,8" },
+	"valCorr" : {	"linCoffs"   : "0.0, 1.020, 6.120, 12.750, 19.125, 36.975, 42.840, 53.040, 85.935, 118.065, 129.540, 186.150, 206.550, 255.0",
+			"linSteps"   : "0.0, 10.00, 20.00, 30.000, 40.000, 50.000, 60.000, 70.000, 75.000,  80.000,  85.000,  90.000,  95.000, 100.0"
+	}	},
+      { "name" : "AI12", "portClass" : 3, "active" : true,
+	"metaInfo" : { "unit" : "4", "description" : "AI12: 0..100%" },
+	"hwCfg" : { "connection" : "I2C", "i2cMuxAddr" : "0x70", "i2cMuxCmd" : "0x05", "i2cAddr" : "0x51", "bitWeight" : "16,32,64,128,0,0,0,0,0,0,0,0,1,2,4,8" },
+	"valCorr" : {	"linCoffs"   : "0.0, 1.020, 6.120, 12.750, 19.125, 25.500, 31.875, 40.035, 65.025, 105.060, 128.775, 168.300, 200.940, 255.0",
+			"linSteps"   : "0.0, 10.00, 20.00, 30.000, 40.000, 50.000, 60.000, 70.000, 75.000,  80.000,  85.000,  90.000,  95.000, 100.0"
+	}	},
+      { "name" : "AI13", "portClass" : 3, "active" : true,
+	"metaInfo" : { "unit" : "4", "description" : "AI12: 0..100%" },
+	"hwCfg" : { "connection" : "I2C", "i2cMuxAddr" : "0x70", "i2cMuxCmd" : "0x05", "i2cAddr" : "0x52", "bitWeight" : "16,32,64,128,0,0,0,0,0,0,0,0,1,2,4,8" },
+	"valCorr" : {	"linCoffs"   : "0.0, 1.020, 5.100, 10.200, 15.300, 19.125, 22.950, 30.600, 70.125, 100.980, 145.350, 178.500, 209.100, 255.0",
+			"linSteps"   : "0.0, 10.00, 20.00, 30.000, 40.000, 50.000, 60.000, 70.000, 75.000,  80.000,  85.000,  90.000,  95.000, 100.0"
+	}	},
+      { "name" : "AI21", "portClass" : 3, "active" : true,
+	"metaInfo" : { "unit" : "3", "description" : "AI21: -20..+50°C" },
+	"hwCfg" : { "connection" : "I2C", "i2cMuxAddr" : "0x70", "i2cMuxCmd" : "0x04", "i2cAddr" : "0x50", "bitWeight" : "16,32,64,128,0,0,0,0,0,0,0,0,1,2,4,8" },
+	"valCorr" : {	"linCoffs"   : "0.0, 1.020, 6.120, 12.75, 19.125, 25.500, 31.875, 40.035, 65.025, 105.060, 128.775, 168.300, 200.940, 255.0",
+			"linSteps"   : "0.0, 10.00, 20.00, 30.00, 40.000, 50.000, 60.000, 70.000, 75.000,  80.000,  85.000,  90.000,  95.000, 100.0",
+			"polyCoffs"  : "-20, 0.70"
+	}	},
+      { "name" : "AI22", "portClass" : 3, "active" : true,
+	"metaInfo" : { "unit" : "3", "description" : "AI21: -20..+50°C" },
+	"hwCfg" : { "connection" : "I2C", "i2cMuxAddr" : "0x70", "i2cMuxCmd" : "0x04", "i2cAddr" : "0x51", "bitWeight" : "16,32,64,128,0,0,0,0,0,0,0,0,1,2,4,8" },
+	"valCorr" : {	"linCoffs"   : "0.0, 1.020, 6.120, 12.75, 19.125, 25.500, 31.875, 40.035, 65.025, 105.060, 128.775, 168.300, 200.940, 255.0",
+			"linSteps"   : "0.0, 10.00, 20.00, 30.00, 40.000, 50.000, 60.000, 70.000, 75.000,  80.000,  85.000,  90.000,  95.000, 100.0",
+			"polyCoffs"  : "-20, 0.70"
+	}	},
+      { "name" : "AI23", "portClass" : 3, "active" : true,
+	"metaInfo" : { "unit" : "3", "description" : "AI21: -20..+50°C" },
+	"hwCfg" : { "connection" : "I2C", "i2cMuxAddr" : "0x70", "i2cMuxCmd" : "0x04", "i2cAddr" : "0x52", "bitWeight"  : "16,32,64,128,0,0,0,0,0,0,0,0,1,2,4,8" },
+	"valCorr" : {	"linCoffs"   : "0.0, 1.020, 6.120, 12.75, 19.125, 25.500, 31.875, 40.035, 65.025, 105.060, 128.775, 168.300, 200.940, 255.0",
+			"linSteps"   : "0.0, 10.00, 20.00, 30.00, 40.000, 50.000, 60.000, 70.000, 75.000,  80.000,  85.000,  90.000,  95.000, 100.0"
+	}	},
+
+
+
+      { "name" : "Temp1", "portClass" : 3, "active" : true,
+	"metaInfo" : { "unit" : "3", "description" : "Temp." },
+	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x48", "bitWeight" : "1,2,4,8,16,32,64,128,0,0,0,0,0,0,0,0.5" },
+	"valCorr" : { "polyCoffs"  : "0, 1.000000"
+	}	}
+] } 

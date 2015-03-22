@@ -48,7 +48,6 @@ public class DataPointTest {
         @Override
         public void dataPointStateChanged(DataPoint dataPoint, BufferState oldOne, BufferState newOne) {
 
-            oldState = oldOne;
             newState = newOne;
         }
 
@@ -73,27 +72,33 @@ public class DataPointTest {
         @Override
         public void bufferChanged(DataPoint dataPoint, SimpleData oldOne, SimpleData newOne) {
 
-            oldValue = oldOne;
             newValue = newOne;
+        }
+    }
+
+    private class Callback implements SDGCallback {
+
+        @Override
+        public void onTimeout(DataPoint dataPoint, Map<String, SimpleData> data) {
+            assertNotNull(dataPoint);
+            assertNotNull(data);
+            cb = true;
         }
     }
 
     // Variables for the last received information of the listener
     private String assignedBuffer;
     private String detachedBuffer;
-    private BufferState oldState;
     private BufferState newState;
-    private SimpleData oldValue;
     private SimpleData newValue;
+    private boolean cb;
 
     /** Clearing the observer data. */
     private void resetObserverData() {
 
         assignedBuffer = null;
         detachedBuffer = null;
-        oldState = null;
         newState = null;
-        oldValue = null;
         newValue = null;
     }
 
@@ -382,5 +387,38 @@ public class DataPointTest {
         assertEquals(BufferState.READY, newValue.getState());
         assertNotNull(newValue.getValue());
         assertEquals(10.0, newValue.getValue().doubleValue(), 1.0e-6);
+    }
+
+    @Test
+    public void testCallbacks() throws Exception {
+
+        Callback callback = new Callback();
+
+        cb = false;
+        dataPoint.addCallback(250L, callback);
+        assertFalse(cb);
+
+        Thread.sleep(125L);
+
+        assertFalse(cb);
+
+        Thread.sleep(250L);
+
+        assertTrue(cb);
+        cb = false;
+
+        Thread.sleep(250L);
+
+        assertTrue(cb);
+        cb = false;
+        dataPoint.removeCallback(callback);
+
+        Thread.sleep(250L);
+
+        assertFalse(cb);
+
+        Thread.sleep(250L);
+
+        assertFalse(cb);
     }
 }

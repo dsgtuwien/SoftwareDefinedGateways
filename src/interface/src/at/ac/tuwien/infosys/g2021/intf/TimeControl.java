@@ -72,7 +72,9 @@ public class TimeControl {
         lock = new Object();
     }
 
-    /** Initialization of the timer. */
+    /** Initialization of the timer.
+     * @param dp the DataPoint
+     * */
     TimeControl(DataPoint dp) {
 
         this();
@@ -92,7 +94,7 @@ public class TimeControl {
     public BlockingQueue<Map<String, SimpleData>> getResultQueue() { return resultQueue; }
 
     /**
-     * Retrieves the eldest data of the result queue, waiting if necessary until data becomes available.
+     * Retrieves the eldest data of the result queue, waiting until data becomes available if necessary.
      *
      * @return the eldest data retrieved from the data point
      *

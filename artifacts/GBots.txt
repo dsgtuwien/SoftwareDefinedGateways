@@ -1,0 +1,25 @@
+
+G2021Daemon - the Buffer-Daemon itself
+===========
+
+avgGBot - reads an AI and lights one of three LEDs
+-------   requires the Testpad
+
+callbackGBot - demonstrates the callback-mechanism
+------------   
+
+cfgTask - creates some Buffers
+-------
+
+demoGBot - shows some Adapter Chains
+--------
+
+ledOnOffGBot - Switches for lightning and darkening LEDs 
+------------   requires the Testpad
+
+loggingGBot - shows all changes of buffers
+-----------
+
+showBuffersGBot - shows details of all buffers, once
+---------------
+

@@ -1,0 +1,1 @@
+java -Djava.util.logging.config.file=./logging.properties -jar G2021Daemon.jar

@@ -1,0 +1,10 @@
+{ "list" : [
+    { "name" : "point01", "value" : 3.25, "valid"    : true,
+      "unit" : "&deg;",   "type"  : 1 },
+    { "name" : "point38", "value" : 18,   "valid"    : false,
+      "unit" : "meter",   "type"  : 1,    "priority" : 0 },
+    { "name" : "point02", "value" : 2.3,   "valid"   : true,
+      "unit" : "meter",   "type"  : 1,    "priority" : 0 },
+    { "name" : "point39", "value" : 35,   "valid"    : true,
+      "unit" : "meter",   "type"  : 2 }
+] }

@@ -3,6 +3,7 @@ at.ac.tuwien.infosys.g2021.common.communication
 at.ac.tuwien.infosys.g2021.common.util
 at.ac.tuwien.infosys.g2021.daemon
 at.ac.tuwien.infosys.g2021.daemon.drivers
+at.ac.tuwien.infosys.g2021.daemon.drivers.pacificControl
 at.ac.tuwien.infosys.g2021.daemon.drivers.raspberrypii2cdemo
 at.ac.tuwien.infosys.g2021.daemon.drivers.unittest
 at.ac.tuwien.infosys.g2021.intf

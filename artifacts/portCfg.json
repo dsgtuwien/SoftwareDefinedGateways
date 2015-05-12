@@ -1,5 +1,11 @@
 {
 "portCfg" : [ 
+      { "hwCfg" : { "connection" : "pacificControl",
+                    "url"    : "file:pacificControl.json",
+                    "urlSet" : "http://127.0.0.1/",
+                    "interval": 5 }
+	},
+
       { "name" : "DI31",  "portClass" : 1, "active" : true,
 	"metaInfo" : { "unit" : "1", "description" : "Switch 31", "position" : "top, first from left" },
 	"hwCfg" : { "connection" : "I2C", "i2cAddr" : "0x22", "bitWeight" : "1,0,0,0,0,0,0,0" }

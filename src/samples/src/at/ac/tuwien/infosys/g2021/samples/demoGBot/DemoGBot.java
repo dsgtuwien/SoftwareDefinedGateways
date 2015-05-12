@@ -31,6 +31,9 @@ public class DemoGBot extends Thread {
     /** This is an inner class, which implements the observer interface. */
     private class LoggingObserver extends AbstractDataPointObserverImplementation {
 
+        int count = 0;
+        double swPos = 0.0;
+
         /**
          * A buffer has changed its state or value.
          *
@@ -54,6 +57,18 @@ public class DemoGBot extends Thread {
                     // This exception is thrown, if at least one of the buffers is not ready.
                     System.out.printf("%s ?????     ???     ?????        ?%n",
                                       format.format(new Date()));
+                }
+
+                // A set-requests to buffer "point39" - the buffer must exist
+                if( dataPoint.isAssigned( "point39" ) ) {
+                    if (count < 10) { count++; }
+                    else {
+                        count = 0;
+                        if (swPos == 0.0) { swPos = 1.0; }
+                        else {              swPos = 0.0; }
+                        System.out.println("Set \"point39\" to " + swPos);
+                        dataPoint.set("point39", swPos);
+                    }
                 }
             }
         }

@@ -4,7 +4,6 @@ import at.ac.tuwien.infosys.g2021.common.BufferDescription;
 import at.ac.tuwien.infosys.g2021.common.BufferState;
 import at.ac.tuwien.infosys.g2021.common.SimpleData;
 import at.ac.tuwien.infosys.g2021.common.util.Unit;
-import at.ac.tuwien.infosys.g2021.intf.AbstractDataPointObserverImplementation;
 import at.ac.tuwien.infosys.g2021.intf.DataPoint;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -36,21 +35,39 @@ public class ShowBuffersGBot {
                 Collection<BufferDescription> availableBuffers = dataPoint.queryBuffersByName(".*");
                 if( availableBuffers.size() > 0 ) {
 
+                    for (BufferDescription bufferDescription : availableBuffers) {
+                        dataPoint.assign(bufferDescription.getBufferName());
+                    }
+
                     // All available buffers will be assigned. We will log actor states, but we don't control any actors.
                     for (BufferDescription bufferDescription : availableBuffers) {
 
+
                         StringBuffer sb = new StringBuffer();
-                        sb.append( "Buffername=" );
+                        sb.append( "   name=" );
                         sb.append(bufferDescription.getBufferName());
-                        sb.append( " " );
-                        sb.append( bufferDescription.isHardwareBuffer() ? "HW" : "--" );
+
+                        SimpleData simpleData = dataPoint.get( bufferDescription.getBufferName() );
+
+                        BufferState state = simpleData.getState();
+                        if(      state.equals(BufferState.FAULTED      )) { sb.append( " state=faulted " ); }
+                        else if( state.equals(BufferState.READY        )) { sb.append( " state=ready   " ); }
+                        else if( state.equals(BufferState.INITIALIZING )) { sb.append( " state=initzing" ); }
+                        else if( state.equals(BufferState.ISOLATED     )) { sb.append( " state=isolated" ); }
+                        else if( state.equals(BufferState.RELEASED     )) { sb.append( " state=released" ); }
+                        else                                              { sb.append( " state=unknown " ); }
+
+                        try { sb.append( " value=" + simpleData.getValue().doubleValue() ); }
+                        catch ( NullPointerException npe ) { sb.append( " value=null" ); }
+
+                        sb.append( bufferDescription.isHardwareBuffer() ? " HW" : " --" );
+
                         Map<String,String> metaInfo = bufferDescription.getBufferMetainfo();
                         for( String key : metaInfo.keySet() ) {
                             sb.append(String.format(" %s=%s", key, metaInfo.get(key) ) );
                             if( key.equals( "unit" ) ) { sb.append("=" + Unit.asText(metaInfo.get(key) ) ); }
                         }
                         System.out.println( sb.toString() );
-                        // dataPoint.assign(bufferDescription.getBufferName());
                     }
                 }
                 else {

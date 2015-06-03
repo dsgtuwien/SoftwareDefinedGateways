@@ -7,8 +7,8 @@ CONTENTS OF THIS FILE
  * Configuration
  * Running the code
  * Build from source
- 
- INTRODUCTION
+
+INTRODUCTION
 ------------
 This project implements a set of java libraries that provide programmatic access to sensors and actuators.
 The software follows the client-server architecture: a Daemon process works as server and directly interfaces the underlying hardware.
